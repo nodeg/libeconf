@@ -23,11 +23,15 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <fcntl.h>
+#include <unistd.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+
 
 #include "../include/libeconf.h"
 
 
-#define EDITOR getenv("EDITOR")
 
 
 static void usage();
@@ -40,9 +44,9 @@ int main (int argc, char *argv[]) {
 	econf_err error;
 	
 	if (argc < 2) {
-                usage("Missing option!\n");
+        usage("Missing command!\n");
 
-	// econfctl show 	
+	/* econfctl show */ 	
 	} else if (strcmp(argv[1], "show") == 0) {
 		if (argc < 3) {
 			usage("Missing filename!\n");
@@ -51,31 +55,31 @@ int main (int argc, char *argv[]) {
 			usage("Too many arguments!\n");
 		}	
 
-		// suffix for econf_ReadDirs()
+		/* suffix for econf_ReadDirs() */
 		char *suffix = strtok(argv[2], ".");
 		int position = 0;
 		char *suffix_array[2];
-        	while (suffix != NULL) {
-			suffix_array[position++] = suffix;
-                	suffix = strtok(NULL, ".");
-        	}
+
+        while (suffix != NULL) {
+		    suffix_array[position++] = suffix;
+                suffix = strtok(NULL, ".");
+        }
 		
-		// process given configuration file directories
+		/* process given configuration file directories */
 		if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", argv[2], suffix_array[1], "=", "#"))) {
 			fprintf(stderr, "%s\n", econf_errString(error));
 		}
 
-		// show groups, keys and their value
 		char **groups = NULL;
-		size_t group_count = 0;
-		size_t key_count = 0;
-                char **keys = NULL;
+        char **keys = NULL;
 		char *value = NULL;
+        size_t group_count = 0;
+        size_t key_count = 0;
 
+        /* show groups, keys and their value */
 		if ((error = econf_getGroups(key_file, &group_count, &groups))) {
 			fprintf(stderr, "%s\n", econf_errString(error));
 		}
-		
 		for (size_t g = 0; g < group_count; g++) {
 			if ((error = econf_getKeys(key_file, groups[g], &key_count, &keys))) {
 				fprintf(stderr, "%s\n", econf_errString(error));
@@ -89,46 +93,61 @@ int main (int argc, char *argv[]) {
 			}
 			printf("\n");
 		}
-		// free created pointers
-		econf_free(groups);
+		
+        econf_free(groups);
 		econf_free(keys);
 		free(value);
-		
-		
 		free(suffix);
 
-	// econfctl cat
+	/* econfctl cat */
 	} else if (strcmp(argv[1], "cat") == 0) {
 		if (argc < 3) {
-                        usage("Missing filename!\n");
+            usage("Missing filename!\n");
 		}
-                if (argc >= 4) {
-                        usage("Too many arguments!\n");
-                }
+        if (argc >= 4) {
+            usage("Too many arguments!\n");
+        }
 
-	// econfctl edit
+
+	/* econfctl edit */
 	} else if (strcmp(argv[1], "edit") == 0) {
 		if (argc < 3) {
-                        usage("Missing filename!\n");
-                }
-		if (argc >= 4) {
-                        usage("Too many arguments!\n");
-                }
+            usage("Missing filename!\n");
+
+        } else if (argc == 4 && strcmp(argv[3], "--full") == 0) {
+            /* copy the original config file to /etc instead of 
+             * creating drop-in files */
+
+        } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
+            /* if the config file does not exist, create it */
+
+        } else if (argc == 4 && (strcmp(argv[3], "--force") != 0 || strcmp(argv[3], "--full") != 0)) {
+            usage("Unknown command!\n");
+
+        } else if (argc > 4) {
+            usage("Too many arguments!\n");
+
+        } else {
+            char *editor = getenv("EDITOR");        
+            if(editor == NULL) {
+                /* if no editor is specified take vim as default */
+                editor = "/usr/bin/vim";            
+            }
+            return execl(editor, editor, "/etc/test.conf", NULL);
+       }
 
 
-	// econfctl revert
+	/* econfctl revert */
 	} else if (strcmp(argv[1], "revert") == 0) {
 		if (argc < 3) {
-                        usage("Missing filename!\n");
-                }
+            usage("Missing filename!\n");
+        }
 		if (argc >= 4) {
-                        usage("Too many arguments!\n");
-                }
-
-
+            usage("Too many arguments!\n");
+         }
 	
 	} else {
-		usage("Unknown option!\n");
+		usage("Unknown command!\n");
 	}
 	
 	econf_free(key_file);
@@ -139,15 +158,15 @@ int main (int argc, char *argv[]) {
 
 static void usage(char *message) {
 	fprintf(stderr,"%s\n", message);
-	fprintf(stderr, "Usage: econfctl [ OPTIONS ] filename.conf\n\n"
-		"OPTIONS:\n"
+	fprintf(stderr, "Usage: econfctl [ COMMANDS ] filename.conf\n\n"
+		"COMMANDS:\n"
 		"show     reads all snippets for filename.conf and prints all groups, keys and their values\n"
 		"cat      prints the content and the name of the file in the order as read by econf_readDirs\n"
 		"edit     starts the editor EDITOR (environment variable) where the groups, keys and values can be modified and saved afterwards\n"
 		"            --full:   copy the original configuration file to /etc instead of creating drop-in files\n"
 		"            --force:  if the configuration file does not exist, create a new one\n"
 		"revert   reverts all changes to the vendor versions. Basically deletes the config files in /etc\n\n");
-	exit(EXIT_SUCCESS);
+	exit(EXIT_FAILURE);
 }
 
 
