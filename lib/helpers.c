@@ -21,15 +21,15 @@
   SOFTWARE.
 */
 
-#include "libeconf.h"
-#include "../include/defines.h"
-#include "../include/helpers.h"
-
 #include <ctype.h>
+#include <limits.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <limits.h>
+
+#include "defines.h"
+#include "helpers.h"
+#include "libeconf.h"
 
 // Combine file path and file name
 char *combine_strings(const char *string_one, const char *string_two,

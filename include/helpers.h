@@ -23,7 +23,7 @@
 
 #pragma once
 
-/* -- helpers.h --- */
+/* --- helpers.h --- */
 
 #include "keyfile.h"
 
