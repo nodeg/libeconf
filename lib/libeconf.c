@@ -21,17 +21,16 @@
   SOFTWARE.
 */
 
-#include "../include/libeconf.h"
-
-#include "../include/defines.h"
-#include "../include/getfilecontents.h"
-#include "../include/helpers.h"
-#include "../include/keyfile.h"
-#include "../include/mergefiles.h"
-
 #include <dirent.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "defines.h"
+#include "getfilecontents.h"
+#include "helpers.h"
+#include "keyfile.h"
+#include "libeconf.h"
+#include "mergefiles.h"
 
 // Create a new econf_file. Allocation is based on
 // KEY_FILE_KEY_FILE_KEY_FILE_DEFAULT_LENGTH
