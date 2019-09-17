@@ -21,15 +21,15 @@
   SOFTWARE.
 */
 
-#include "libeconf.h"
-#include "../include/defines.h"
-#include "../include/helpers.h"
-#include "../include/mergefiles.h"
-
 #include <dirent.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "defines.h"
+#include "helpers.h"
+#include "libeconf.h"
+#include "mergefiles.h"
 
 // Insert the content of "etc_file.file_entry" into "fe" if there is no
 // group specified

@@ -25,9 +25,10 @@
 
 /* --- keyfile.h --- */
 
-#include <stdint.h>
 #include <stdbool.h>
+#include <stdint.h>
 #include <stdlib.h>
+#include "libeconf.h"
 
 /* This file contains the definition of the econf_file struct declared in
    libeconf.h as well as the functions to get and set a specified element

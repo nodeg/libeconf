@@ -23,9 +23,10 @@
 
 #pragma once
 
-#include "keyfile.h"
+/* --- mergefiles.h --- */
 
 #include <stddef.h>
+#include "keyfile.h"
 
 /* This file contains the declaration of the functions used by econf_mergeFiles
    to merge the contents of two econf_files.  */

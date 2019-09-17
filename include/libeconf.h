@@ -23,7 +23,7 @@
 
 #pragma once
 
-/* libeconf.h */
+/* --- libeconf.h --- */
 
 #include <stdbool.h>
 #include <stdint.h>
