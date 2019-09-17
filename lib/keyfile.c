@@ -21,17 +21,17 @@
   SOFTWARE.
 */
 
-#include "libeconf.h"
-#include "../include/defines.h"
-#include "../include/helpers.h"
-#include "../include/keyfile.h"
-
 #include <errno.h>
 #include <float.h>
 #include <inttypes.h>
 #include <math.h>
 #include <stdio.h>
 #include <string.h>
+
+#include "defines.h"
+#include "helpers.h"
+#include "keyfile.h"
+#include "libeconf.h"
 
 econf_err key_file_append(econf_file *kf) {
   /* XXX check return values and for NULL pointers */

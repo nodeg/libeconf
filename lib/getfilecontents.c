@@ -21,16 +21,16 @@
   SOFTWARE.
 */
 
-#include "libeconf.h"
-#include "../include/defines.h"
-#include "../include/getfilecontents.h"
-#include "../include/helpers.h"
-
+#include <ctype.h>
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
+
+#include "defines.h"
+#include "getfilecontents.h"
+#include "helpers.h"
+#include "libeconf.h"
 
 static econf_err
 store (econf_file *ef, const char *group, const char *key,

@@ -23,7 +23,8 @@
 
 #pragma once
 
-#include "libeconf.h"
+/* --- getfilecontents.h --- */
+
 #include "keyfile.h"
 
 /* Fill the econf_file struct with values from the given file */
