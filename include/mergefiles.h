@@ -1,6 +1,7 @@
 /*
   Copyright (C) 2019 SUSE LLC
   Author: Pascal Arlt <parlt@suse.com>
+  Author: Dominik Gedon <dgedon@suse.com>
 
   Permission is hereby granted, free of charge, to any person obtaining a copy
   of this software and associated documentation files (the "Software"), to deal
@@ -21,37 +22,77 @@
   SOFTWARE.
 */
 
-#pragma once
+/**
+ * @file mergefiles.h
+ * @brief This file contains the declaration of functions used by econf_mergeFiles()
+ *        to merge the contents of two econf_files.
+ */
 
-/* --- mergefiles.h --- */
+#pragma once
 
 #include <stddef.h>
 #include "keyfile.h"
 
-/* This file contains the declaration of the functions used by econf_mergeFiles
-   to merge the contents of two econf_files.  */
 
-
-/* Insert the content of "etc_file.file_entry" into "fe" if there is no
-   group specified.  */
+/**
+ * @brief Insert the content of "etc_file.file_entry" into "fe" if there is no
+ *        group specified.
+ * @param fe
+ * @param ef
+ * @return
+ */
 size_t insert_nogroup(struct file_entry **fe, econf_file *ef);
 
-/* Merge contents from existing usr_file groups */
+/**
+ * @brief Merge contents from existing usr_file groups.
+ * @param fe
+ * @param uf
+ * @param ef
+ * @param etc_start
+ * @return
+ */
 size_t merge_existing_groups(struct file_entry **fe, econf_file *uf, econf_file *ef,
                              const size_t etc_start);
 
-/* Add entries from etc_file exclusive groups */
+/**
+ * @brief Add entries from etc_file exclusive groups.
+ * @param fe
+ * @param uf
+ * @param ef
+ * @param merge_length
+ * @return
+ */
 size_t add_new_groups(struct file_entry **fe, econf_file *uf, econf_file *ef,
                       const size_t merge_length);
 
-/* Returns the default dirs to iterate through when merging */
+/**
+ * @brief Returns the default dirs to iterate through when merging.
+ * @param usr_conf_dir
+ * @param etc_conf_dir
+ * @return
+ */
 char **get_default_dirs(const char *usr_conf_dir, const char *etc_conf_dir);
 
-/* Receives a list of config directories to look for and calls 'check_conf_dir' */
+/**
+ * @brief Receives a list of config directories to look for and calls 'check_conf_dir'.
+ * @param key_files
+ * @param conf_dirs[]
+ * @param size
+ * @param path
+ * @param config_suffix
+ * @param delim
+ * @param comment
+ * @return
+ */
 econf_file **traverse_conf_dirs(econf_file **key_files, const char *conf_dirs[],
-                              size_t *size, const char *path, 
-                              const char *config_suffix,
-                              const char *delim, const char *comment);
+                                size_t *size, const char *path,
+                                const char *config_suffix,
+                                const char *delim, const char *comment);
 
-/* Merge an array of given econf_files into one */
+/**
+ * @brief Merge an array of given econf_files into one.
+ * @param key_files
+ * @param merged_files
+ * @return
+ */
 econf_err merge_econf_files(econf_file **key_files, econf_file **merged_files);
