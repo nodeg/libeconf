@@ -157,7 +157,7 @@ int main (int argc, char *argv[]) {
 		} else if (argc > 4) {
 			usage("Too many arguments!\n");
 		} else {
-			char *editor = getenv("EDITOR";)
+			char *editor = getenv("EDITOR");
 			if(editor == NULL) {
 				/* if no editor is specified take vim as default */
 				editor = "/usr/bin/vim";
