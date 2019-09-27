@@ -39,5 +39,7 @@
  * @param comment Specifies which char to regard as comment indicator.
  * @return An econf error code. See libeconf.h for details.
  */
-extern econf_err read_file(econf_file *read_file, const char *file,
-			   const char *delim, const char *comment);
+extern econf_err read_file(econf_file *read_file,
+				const char *file,
+				const char *delim,
+				const char *comment);

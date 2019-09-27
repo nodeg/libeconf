@@ -25,8 +25,8 @@
 /**
  * @file keyfile.h
  * @brief This file contains the definition of the econf_file struct declared in
- * libeconf.h as well as the functions to get and set a specified element
- * of the struct. All functions return an error code != 0 on error.
+ *        libeconf.h as well as the functions to get and set a specified element
+ *        of the struct. All functions return an error code != 0 on error.
  */
 
 #pragma once

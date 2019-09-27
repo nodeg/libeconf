@@ -38,8 +38,9 @@
  * @param delimiter The delimiter to use.
  * @return The combined string.
  */
-char *combine_strings(const char *string_one, const char *string_two,
-                      const char delimiter);
+char *combine_strings(const char *string_one,
+			const char *string_two,
+			const char delimiter);
 
 /**
  * @brief Remove whitespace from the beginning and the end of a string.
@@ -107,7 +108,9 @@ size_t hashstring(const char *str);
  * @return An econf_err error code. If the key is found num will
  *         point to the array index of the key or be -1.
  */
-econf_err find_key(econf_file key_file, const char *group, const char *key, size_t *num);
+econf_err find_key(econf_file key_file, const char *group,
+			const char *key,
+			size_t *num);
 
 /* Set value for the given group, key combination. If the combination
    does not exist it is created.  */
@@ -122,8 +125,10 @@ econf_err find_key(econf_file key_file, const char *group, const char *key, size
  *         exist, it will be created.
  */
 econf_err setKeyValue(econf_err (*function) (econf_file*, size_t, const void*),
-                      econf_file *kf, const char *group, const char *key,
-                      const void *value);
+			econf_file *kf,
+			const char *group,
+			const char *key,
+			const void *value);
 
 /**
  * @brief Copy the contents of a file_entry struct.

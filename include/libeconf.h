@@ -69,7 +69,8 @@ typedef struct econf_file econf_file; /**< econf_file struct, see keyfile.h */
  *
  * @note Usage:
  * @code
- *      econf_setValue(econf_file *key_file, char *group, char *key, _generic_ value);
+ *      econf_setValue(econf_file *key_file, char *group, char *key,
+ *                     _generic_ value);
  * @endcode
  * Replace _generic_ with one of the supported value types.
  * Supported Types: int, long, unsigned int, unsigned long, float, double,
@@ -108,15 +109,18 @@ typedef struct econf_file econf_file; /**< econf_file struct, see keyfile.h */
 
 
 /**
- * @brief Process the file of the given file_name and save its contents into a key_file.
+ * @brief Process the file of the given file_name and save its contents into a
+ *        key_file.
  * @param result The key file where the content is saved.
  * @param file_name The file name of the file to process.
  * @param delimiter The delimiter used in the file.
  * @param comment The character used for comments.
  * @result An econf_err error code.
  */
-extern econf_err econf_readFile(econf_file **result, const char *file_name,
-				const char *delimiter, const char *comment);
+extern econf_err econf_readFile(econf_file **result,
+				const char *file_name,
+				const char *delimiter,
+				const char *comment);
 
 /**
  * @brief Merge the contents of two key files.
@@ -126,7 +130,8 @@ extern econf_err econf_readFile(econf_file **result, const char *file_name,
  * @result An econf_err error code.
  */
 extern econf_err econf_mergeFiles(econf_file **merged_file,
-				  econf_file *usr_file, econf_file *etc_file);
+				  econf_file *usr_file,
+				  econf_file *etc_file);
 
 /**
  * @brief Read the specified config file in /etc and /usr.
@@ -156,7 +161,9 @@ extern econf_err econf_readDirs(econf_file **key_file,
  *
  * @warning The API/ABI is not stable and will change!
  */
-extern econf_err econf_newKeyFile(econf_file **result, char delimiter, char comment);
+extern econf_err econf_newKeyFile(econf_file **result,
+				char delimiter,
+				char comment);
 
 /**
  * @brief Create a new econf_file ini file. Basically calls econf_newKeyFile().
@@ -176,8 +183,9 @@ extern econf_err econf_newIniFile(econf_file **result);
  *
  * @warning The API/ABI is not stable and will change!
  */
-extern econf_err econf_writeFile(econf_file *key_file, const char *save_to_dir,
-				 const char *file_name);
+extern econf_err econf_writeFile(econf_file *key_file,
+				const char *save_to_dir,
+				const char *file_name);
 
 
 /**
@@ -194,7 +202,9 @@ extern econf_err econf_writeFile(econf_file *key_file, const char *save_to_dir,
  * @param groups The groups to retrieve.
  * @return An econf_err error code.
  */
-extern econf_err econf_getGroups(econf_file *kf, size_t *length, char ***groups);
+extern econf_err econf_getGroups(econf_file *kf,
+				size_t *length,
+				char ***groups);
 
 /**
  * @brief Retrieve the keys in group of a key_file kf.
@@ -206,7 +216,10 @@ extern econf_err econf_getGroups(econf_file *kf, size_t *length, char ***groups)
  * @param keys The keys to retrieve.
  * @return An econf_err error code.
  */
-extern econf_err econf_getKeys(econf_file *kf, const char *group, size_t *length, char ***keys);
+extern econf_err econf_getKeys(econf_file *kf,
+				const char *group,
+				size_t *length,
+				char ***keys);
 
 /**
  * @brief Functions used to get a set value from a key_file kf.
@@ -221,12 +234,30 @@ extern econf_err econf_getKeys(econf_file *kf, const char *group, size_t *length
 /** @ingroup econf_getter
  * @{
  */
-extern econf_err econf_getIntValue(econf_file *kf, const char *group, const char *key, int32_t *result);
-extern econf_err econf_getInt64Value(econf_file *kf, const char *group, const char *key, int64_t *result);
-extern econf_err econf_getUIntValue(econf_file *kf, const char *group, const char *key, uint32_t *result);
-extern econf_err econf_getUInt64Value(econf_file *kf, const char *group, const char *key, uint64_t *result);
-extern econf_err econf_getFloatValue(econf_file *kf, const char *group, const char *key, float *result);
-extern econf_err econf_getDoubleValue(econf_file *kf, const char *group, const char *key, double *result);
+extern econf_err econf_getIntValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				int32_t *result);
+extern econf_err econf_getInt64Value(econf_file *kf,
+				const char *group,
+				const char *key,
+				int64_t *result);
+extern econf_err econf_getUIntValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint32_t *result);
+extern econf_err econf_getUInt64Value(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint64_t *result);
+extern econf_err econf_getFloatValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				float *result);
+extern econf_err econf_getDoubleValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				double *result);
 /** @}*/
 
 /**
@@ -239,7 +270,10 @@ extern econf_err econf_getDoubleValue(econf_file *kf, const char *group, const c
  * @param result Contains the string value or NULL in error case.
  * @return An econf_err error code.
  */
-extern econf_err econf_getStringValue(econf_file *kf, const char *group, const char *key, char **result);
+extern econf_err econf_getStringValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				char **result);
 
 /**
  * @brief Retrieve the bool value of a key from a key_file kf.
@@ -251,7 +285,10 @@ extern econf_err econf_getStringValue(econf_file *kf, const char *group, const c
  * @param result Contains the bool value or NULL in error case.
  * @return An econf_err error code.
  */
-extern econf_err econf_getBoolValue(econf_file *kf, const char *group, const char *key, bool *result);
+extern econf_err econf_getBoolValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				bool *result);
 
 /**
  * @brief Functions used to get a set value from key_file kf.
@@ -260,21 +297,47 @@ extern econf_err econf_getBoolValue(econf_file *kf, const char *group, const cha
  * @param kf The econf_file struct.
  * @param group The group the key belongs to.
  * @param key The key to retrieve.
- * @param result Contains the value of the key or the default value if the key is not found.
+ * @param result Contains the value of the key or the default value if the key
+ *        is not found.
  * @param def The default value.
  * @return An econf_err error code.
  *
- * @note If key is not found, the default value is returned and the error is ECONF_NOKEY.
+ * @note If key is not found, the default value is returned and the error is
+ *       ECONF_NOKEY.
  */
 /** @ingroup econf_def_getter
  * @{
  */
-extern econf_err econf_getIntValueDef(econf_file *kf, const char *group, const char *key, int32_t *result, int32_t def);
-extern econf_err econf_getInt64ValueDef(econf_file *kf, const char *group, const char *key, int64_t *result, int64_t def);
-extern econf_err econf_getUIntValueDef(econf_file *kf, const char *group, const char *key, uint32_t *result, uint32_t def);
-extern econf_err econf_getUInt64ValueDef(econf_file *kf, const char *group, const char *key, uint64_t *result, uint64_t def);
-extern econf_err econf_getFloatValueDef(econf_file *kf, const char *group, const char *key, float *result, float def);
-extern econf_err econf_getDoubleValueDef(econf_file *kf, const char *group, const char *key, double *result, double def);
+extern econf_err econf_getIntValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				int32_t *result,
+				int32_t def);
+extern econf_err econf_getInt64ValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				int64_t *result,
+				int64_t def);
+extern econf_err econf_getUIntValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint32_t *result,
+				uint32_t def);
+extern econf_err econf_getUInt64ValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint64_t *result,
+				uint64_t def);
+extern econf_err econf_getFloatValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				float *result,
+				float def);
+extern econf_err econf_getDoubleValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				double *result,
+				double def);
 /** @}*/
 
 
@@ -289,7 +352,11 @@ extern econf_err econf_getDoubleValueDef(econf_file *kf, const char *group, cons
  * @param def The default value to set.
  * @return An econf_err error code.
  */
-extern econf_err econf_getStringValueDef(econf_file *kf, const char *group, const char *key, char **result, char *def);
+extern econf_err econf_getStringValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				char **result,
+				char *def);
 
 /**
  * @brief Retrieves the bool value of a key of a key_file kf.
@@ -302,7 +369,11 @@ extern econf_err econf_getStringValueDef(econf_file *kf, const char *group, cons
  * @param def The default value to set.
  * @return An econf_err error code.
  */
-extern econf_err econf_getBoolValueDef(econf_file *kf, const char *group, const char *key, bool *result, bool def);
+extern econf_err econf_getBoolValueDef(econf_file *kf,
+				const char *group,
+				const char *key,
+				bool *result,
+				bool def);
 
 
 /**
@@ -318,14 +389,38 @@ extern econf_err econf_getBoolValueDef(econf_file *kf, const char *group, const 
 /** @ingroup econf_setter
  * @{
  */
-extern econf_err econf_setIntValue(econf_file *kf, const char *group, const char *key, int32_t value);
-extern econf_err econf_setInt64Value(econf_file *kf, const char *group, const char *key, int64_t value);
-extern econf_err econf_setUIntValue(econf_file *kf, const char *group, const char *key, uint32_t value);
-extern econf_err econf_setUInt64Value(econf_file *kf, const char *group, const char *key, uint64_t value);
-extern econf_err econf_setFloatValue(econf_file *kf, const char *group, const char *key, float value);
-extern econf_err econf_setDoubleValue(econf_file *kf, const char *group, const char *key, double value);
-extern econf_err econf_setStringValue(econf_file *kf, const char *group, const char *key, const char *value);
-extern econf_err econf_setBoolValue(econf_file *kf, const char *group, const char *key, const char *value);
+extern econf_err econf_setIntValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				int32_t value);
+extern econf_err econf_setInt64Value(econf_file *kf,
+				const char *group,
+				const char *key,
+				int64_t value);
+extern econf_err econf_setUIntValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint32_t value);
+extern econf_err econf_setUInt64Value(econf_file *kf,
+				const char *group,
+				const char *key,
+				uint64_t value);
+extern econf_err econf_setFloatValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				float value);
+extern econf_err econf_setDoubleValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				double value);
+extern econf_err econf_setStringValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				const char *value);
+extern econf_err econf_setBoolValue(econf_file *kf,
+				const char *group,
+				const char *key,
+				const char *value);
 /** @}*/
 
 
@@ -344,7 +439,8 @@ extern econf_err econf_setBoolValue(econf_file *kf, const char *group, const cha
 extern const char *econf_errString (const econf_err);
 
 /**
- * @brief Free an array of type char** created by econf_getGroups() or econf_getKeys().
+ * @brief Free an array of type char** created by econf_getGroups() or
+ *        econf_getKeys().
  * @ingroup econf_helper
  *
  * @param array The array to free.
