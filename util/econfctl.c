@@ -32,178 +32,177 @@
 static void usage();
 
 int main (int argc, char *argv[]) {
-	econf_file *key_file = NULL;
-	econf_err error;
-	
-	if (argc < 2) {
+    econf_file *key_file = NULL;
+    econf_err error;
+
+    if (argc < 2) {
         usage("Missing command!\n");
 
-	/**
-	 * @brief This command will read all snippets for example.conf
-	 *        (econf_readDirs) and print all groups, keys and their
-	 *        values as an application would see them.
-	 */
-	} else if (strcmp(argv[1], "show") == 0) {
-		if (argc < 3) {
-			usage("Missing filename!\n");
-		}
-		if (argc >= 4) {
-			usage("Too many arguments!\n");
-		}	
+    /**
+     * @brief This command will read all snippets for example.conf
+     *        (econf_readDirs) and print all groups, keys and their
+     *        values as an application would see them.
+     */
+    } else if (strcmp(argv[1], "show") == 0) {
+        if (argc < 3) {
+            usage("Missing filename!\n");
+        }
+        if (argc >= 4) {
+            usage("Too many arguments!\n");
+        }
 
-		/* suffix for econf_ReadDirs() */
-		char *suffix = strtok(argv[2], ".");
-		int position = 0;
-		char *suffix_array[2];
+        /* suffix for econf_ReadDirs() */
+        char *suffix = strtok(argv[2], ".");
+        int position = 0;
+        char *suffix_array[2];
 
-		while (suffix != NULL) {
-			suffix_array[position++] = suffix;
-			suffix = strtok(NULL, ".");
-		}
-		
-		/*
-		 * process given configuration file directories. A wrapper has
-		 * to be written in order to parse more directories. At this
-		 * moment only /etc and /usr/etc is handled.
-		 */
-		if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc",
-			    suffix_array[0], suffix_array[1],"=", "#"))) {
-			fprintf(stderr, "%s\n", econf_errString(error));
-			econf_free(key_file);
-			return EXIT_FAILURE;
-		}
+        while (suffix != NULL) {
+            suffix_array[position++] = suffix;
+            suffix = strtok(NULL, ".");
+        }
+        /*
+         * process given configuration file directories. A wrapper has
+         * to be written in order to parse more directories. At this
+         * moment only /etc and /usr/etc is handled.
+         */
+        if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc",
+                suffix_array[0], suffix_array[1],"=", "#"))) {
+            fprintf(stderr, "%s\n", econf_errString(error));
+            econf_free(key_file);
+            return EXIT_FAILURE;
+        }
 
-		/* TODO: include econf_mergeFiles() */
+        /* TODO: include econf_mergeFiles() */
 
-		char **groups = NULL;
-		char *value = NULL;
-		size_t group_count = 0;
+        char **groups = NULL;
+        char *value = NULL;
+        size_t group_count = 0;
 
-		/* show groups, keys and their value */
-		if ((error = econf_getGroups(key_file, &group_count, &groups))) {
-			fprintf(stderr, "%s\n", econf_errString(error));
-			econf_free(groups);
-			econf_free(key_file);
-			return EXIT_FAILURE;
-		}
-		char **keys = NULL;
-		size_t key_count = 0;
+        /* show groups, keys and their value */
+        if ((error = econf_getGroups(key_file, &group_count, &groups))) {
+            fprintf(stderr, "%s\n", econf_errString(error));
+            econf_free(groups);
+            econf_free(key_file);
+            return EXIT_FAILURE;
+        }
+        char **keys = NULL;
+        size_t key_count = 0;
 
-		for (size_t g = 0; g < group_count; g++) {
-			if ((error = econf_getKeys(key_file, groups[g],
-						 &key_count, &keys))) {
-				fprintf(stderr, "%s\n", econf_errString(error));
-				econf_free(groups);
-				econf_free(keys);
-				econf_free(key_file);
-				return EXIT_FAILURE;
-			}
-			printf("%s\n", groups[g]);
-			for (size_t k = 0; k < key_count; k++) {
-				if ((error = econf_getStringValue(key_file, groups[g], keys[k],
-							 &value)) || value == NULL || strlen(value) == 0) {
-					fprintf(stderr, "%s\n", econf_errString(error));
-					econf_free(groups);
-					econf_free(keys);
-					econf_free(key_file);
-					free(value);
-					return EXIT_FAILURE;
-				}
-				printf("%s = %s\n", keys[k], value);
-				free(value);
-			}
-			printf("\n");
-			econf_free(keys);
-		}
-		econf_free(groups);
-		//free(value);
-
-
-	/**
-	 * @brief This command will print the content of the files and the name of the
-	 *        file in the order as read by econf_readDirs.
-	 */
-	} else if (strcmp(argv[1], "cat") == 0) {
-		if (argc < 3) {
-			usage("Missing filename!\n");
-		}
-		if (argc >= 4) {
-			 usage("Too many arguments!\n");
-		}
-
-	/**
-	 * @brief This command will start an editor (EDITOR environment variable),
-	 *        which shows all groups, keys and their values (like econfctl
-	 *        show output), allows the admin to modify them, and stores the
-	 *        changes afterwards.
-	 * --full: copy the original config file to /etc instead of creating drop-in
-	 *         files.
-	 * --force: if the config does not exist, create a new one.
-	 *
-	 */
-	} else if (strcmp(argv[1], "edit") == 0) {
-		if (argc < 3) {
-			usage("Missing filename!\n");
-
-		/* copy the original config file to /etc instead of
-		 * creating drop-in files */
-		} else if (argc == 4 && strcmp(argv[3], "--full") == 0) {
-
-		/* if the config file does not exist, create it */
-		} else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
-		} else if (argc == 4 && (strcmp(argv[3], "--force") != 0
-								 || strcmp(argv[3], "--full") != 0)) {
-				usage("Unknown command!\n");
-		} else if (argc > 4) {
-			usage("Too many arguments!\n");
-		} else {
-			char *editor = getenv("EDITOR");
-			if(editor == NULL) {
-				/* if no editor is specified take vim as default */
-				editor = "/usr/bin/vim";
-			}
-			/* TODO
-			 * test: just open vim and let it handle the file */
-			return execl(editor, editor, "/etc/test.conf", NULL);
-		}
+        for (size_t g = 0; g < group_count; g++) {
+            if ((error = econf_getKeys(key_file, groups[g], &key_count,
+                            &keys))) {
+                fprintf(stderr, "%s\n", econf_errString(error));
+                econf_free(groups);
+                econf_free(keys);
+                econf_free(key_file);
+                return EXIT_FAILURE;
+            }
+            printf("%s\n", groups[g]);
+            for (size_t k = 0; k < key_count; k++) {
+                if ((error = econf_getStringValue(key_file, groups[g], keys[k],
+                             &value)) || value == NULL || strlen(value) == 0) {
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(groups);
+                    econf_free(keys);
+                    econf_free(key_file);
+                    free(value);
+                    return EXIT_FAILURE;
+                }
+                printf("%s = %s\n", keys[k], value);
+                free(value);
+            }
+            printf("\n");
+            econf_free(keys);
+        }
+        econf_free(groups);
+        //free(value);
 
 
-	/**
-	 * @biref Revert all changes to the vendor versions. In the end this means
-	 *        most likely to delete all files in /etc for this.
-	 */
-	} else if (strcmp(argv[1], "revert") == 0) {
-		if (argc < 3) {
-			usage("Missing filename!\n");
-		}
-		if (argc >= 4) {
-			usage("Too many arguments!\n");
-		}
-	} else {
-		usage("Unknown command!\n");
-	}
-	econf_free(key_file);
-	return EXIT_SUCCESS;
+    /**
+     * @brief This command will print the content of the files and the name of the
+     *        file in the order as read by econf_readDirs.
+     */
+    } else if (strcmp(argv[1], "cat") == 0) {
+        if (argc < 3) {
+            usage("Missing filename!\n");
+        }
+        if (argc >= 4) {
+             usage("Too many arguments!\n");
+        }
+
+    /**
+     * @brief This command will start an editor (EDITOR environment variable),
+     *        which shows all groups, keys and their values (like econfctl
+     *        show output), allows the admin to modify them, and stores the
+     *        changes afterwards.
+     * --full: copy the original config file to /etc instead of creating drop-in
+     *         files.
+     * --force: if the config does not exist, create a new one.
+     *
+     */
+    } else if (strcmp(argv[1], "edit") == 0) {
+        if (argc < 3) {
+            usage("Missing filename!\n");
+
+        /* copy the original config file to /etc instead of
+         * creating drop-in files */
+        } else if (argc == 4 && strcmp(argv[3], "--full") == 0) {
+
+        /* if the config file does not exist, create it */
+        } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
+        } else if (argc == 4 && (strcmp(argv[3], "--force") != 0
+                                 || strcmp(argv[3], "--full") != 0)) {
+                usage("Unknown command!\n");
+        } else if (argc > 4) {
+            usage("Too many arguments!\n");
+        } else {
+            char *editor = getenv("EDITOR");
+            if(editor == NULL) {
+                /* if no editor is specified take vim as default */
+                editor = "/usr/bin/vim";
+            }
+            /* TODO
+             * test: just open vim and let it handle the file */
+            return execl(editor, editor, "/etc/test.conf", NULL);
+        }
+
+
+    /**
+     * @biref Revert all changes to the vendor versions. In the end this means
+     *        most likely to delete all files in /etc for this.
+     */
+    } else if (strcmp(argv[1], "revert") == 0) {
+        if (argc < 3) {
+            usage("Missing filename!\n");
+        }
+        if (argc >= 4) {
+            usage("Too many arguments!\n");
+        }
+    } else {
+        usage("Unknown command!\n");
+    }
+    econf_free(key_file);
+    return EXIT_SUCCESS;
 }
 
 /**
  * @brief Print error messages and show the usage.
  */
 static void usage(char *message) {
-	fprintf(stderr,"%s\n", message);
-	fprintf(stderr, "Usage: econfctl [ COMMANDS ] filename.conf\n\n"
-		"COMMANDS:\n"
-		"show     reads all snippets for filename.conf and prints all groups,"
-				  "keys and their values\n"
-		"cat      prints the content and the name of the file in the order as"
-		          "read by econf_readDirs\n"
-		"edit     starts the editor EDITOR (environment variable) where the"
-		          "groups, keys and values can be modified and saved afterwards\n"
-		"            --full:   copy the original configuration file to /etc"
-		                       "instead of creating drop-in files\n"
-		"            --force:  if the configuration file does not exist, create"
-		                       "a new one\n"
-		"revert   reverts all changes to the vendor versions. Basically deletes"
-		          "the config files in /etc\n\n");
-	exit(EXIT_FAILURE);
+    fprintf(stderr,"%s\n", message);
+    fprintf(stderr, "Usage: econfctl [ COMMANDS ] filename.conf\n\n"
+        "COMMANDS:\n"
+        "show     reads all snippets for filename.conf and prints all groups,"
+                  "keys and their values\n"
+        "cat      prints the content and the name of the file in the order as"
+                  "read by econf_readDirs\n"
+        "edit     starts the editor EDITOR (environment variable) where the"
+                  "groups, keys and values can be modified and saved afterwards\n"
+        "            --full:   copy the original configuration file to /etc"
+                               "instead of creating drop-in files\n"
+        "            --force:  if the configuration file does not exist, create"
+                               "a new one\n"
+        "revert   reverts all changes to the vendor versions. Basically deletes"
+                  "the config files in /etc\n\n");
+    exit(EXIT_FAILURE);
 }
