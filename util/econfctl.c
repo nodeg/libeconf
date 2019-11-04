@@ -143,27 +143,34 @@ int main (int argc, char *argv[]) {
     } else if (strcmp(argv[1], "edit") == 0) {
         if (argc < 3) {
             usage("Missing filename!\n");
-
-        /* copy the original config file to /etc instead of
-         * creating drop-in files */
-        } else if (argc == 4 && strcmp(argv[3], "--full") == 0) {
-
-        /* if the config file does not exist, create it */
-        } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
-        } else if (argc == 4 && (strcmp(argv[3], "--force") != 0
-                                 || strcmp(argv[3], "--full") != 0)) {
-                usage("Unknown command!\n");
         } else if (argc > 4) {
             usage("Too many arguments!\n");
         } else {
+
             char *editor = getenv("EDITOR");
+            //fprintf(stdout, "Editor: %s", editor); /* debug */
             if(editor == NULL) {
                 /* if no editor is specified take vim as default */
                 editor = "/usr/bin/vim";
             }
-            /* TODO
-             * test: just open vim and let it handle the file */
-            return execl(editor, editor, "/etc/test.conf", NULL);
+
+            /* copy the original config file to /etc instead of creating drop-in
+             * files */
+            if (argc == 4 && strcmp(argv[3], "--full") == 0) {
+                fprintf(stdout, "--full path. stop\n"); /* debug */
+                /* TODO */
+
+            /* if the config file does -not- exist, create it */
+            } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
+                /* TODO */
+
+            } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
+                                  || (strcmp(argv[3], "--full") != 0))) {
+                usage("Unknown command!\n");
+
+            } else {
+                /* TODO */
+           }
         }
 
 
