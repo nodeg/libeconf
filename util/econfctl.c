@@ -196,7 +196,27 @@ int main (int argc, char *argv[]) {
 
             /* if the config file does -not- exist, create it */
             } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
-                /* TODO */
+                //fprintf(stdout, "--force path\n"); /* debug */
+                if (!fileExists) {
+                    if (isRoot) {
+                        //fprintf(stdout, "--force, root path\n"); /* debug */
+                        return execlp(editor, editor, path, NULL);
+                    } else {
+                        //fprintf(stdout, "--force, not root path\n"); /* debug */
+                        /* the user is not root and therefore the path has to
+                         * be adjusted, since then the file is saved in the HOME
+                         * directory of the user.
+                         */
+                        snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
+                        //fprintf(stdout, "Path: %s\n", path); /* debug */
+                        strncat(path, argv2,strlen(argv2));
+                        //fprintf(stdout, "Path: %s\n", path); /* debug */
+                        return execlp(editor, editor, path, NULL);
+                    }
+                }
+                /* the file does already exist. Just open it. */
+                 //fprintf(stdout, "--force -> file already exists\n"); /* debug */
+                 return execlp(editor, editor, path, NULL);
 
             } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
                                   || (strcmp(argv[3], "--full") != 0))) {
