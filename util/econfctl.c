@@ -151,6 +151,10 @@ int main (int argc, char *argv[]) {
              char *dir = "/etc/"; /* TODO */
              char *argv2 = argv[2];
              char *home = getenv("HOME");
+             bool fileExists = false;
+             bool isRoot = false;
+             uid_t uid = getuid();
+             uid_t euid = geteuid();
 
              /* combine dir and argv[2] and save it in path */
              snprintf(path, strlen(dir) + 1, "%s", dir);
@@ -169,6 +173,19 @@ int main (int argc, char *argv[]) {
                  * default */
                 xdgConfigDir = strncat(home, "/.config/", strlen("/.config/"));
                 //fprintf(stdout, "XDG conf dir: %s\n", xdgConfigDir); /* debug */
+            }
+
+            /* check if file already exists */
+            if (access(path, F_OK) != -1) {
+                fileExists = true;
+            } else {
+                fileExists = false;
+            }
+            /* basic write permission checking by using uid/euid */
+            if (uid == 0 && uid == euid) {
+                isRoot = true;
+            } else {
+                isRoot = false;
             }
 
             /* copy the original config file to /etc instead of creating drop-in
