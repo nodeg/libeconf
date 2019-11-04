@@ -146,6 +146,14 @@ int main (int argc, char *argv[]) {
         } else if (argc > 4) {
             usage("Too many arguments!\n");
         } else {
+            /* At the moment with static values. */
+             char path[15] = ""; /* TODO */
+             char *dir = "/etc/"; /* TODO */
+             char *argv2 = argv[2];
+
+             /* combine dir and argv[2] and save it in path */
+             snprintf(path, strlen(dir) + 1, "%s", dir);
+             strncat(path, argv2, strlen(argv2));
 
             char *editor = getenv("EDITOR");
             //fprintf(stdout, "Editor: %s", editor); /* debug */
@@ -169,7 +177,10 @@ int main (int argc, char *argv[]) {
                 usage("Unknown command!\n");
 
             } else {
-                /* TODO */
+                /* just open vim and let it handle the file */
+                fprintf(stdout, "normal path\n"); /* debug */
+                fprintf(stdout, "Path: %s\n", path); /* debug */
+                return execlp(editor, editor, path, NULL);
            }
         }
 
