@@ -150,6 +150,7 @@ int main (int argc, char *argv[]) {
              char path[15] = ""; /* TODO */
              char *dir = "/etc/"; /* TODO */
              char *argv2 = argv[2];
+             char *home = getenv("HOME");
 
              /* combine dir and argv[2] and save it in path */
              snprintf(path, strlen(dir) + 1, "%s", dir);
@@ -160,6 +161,14 @@ int main (int argc, char *argv[]) {
             if(editor == NULL) {
                 /* if no editor is specified take vim as default */
                 editor = "/usr/bin/vim";
+            }
+
+            char *xdgConfigDir = getenv("XDG_CONFIG_HOME");
+            if (xdgConfigDir == NULL) {
+                /* if no XDG_CONFIG_HOME ist specified take ~/.config as
+                 * default */
+                xdgConfigDir = strncat(home, "/.config/", strlen("/.config/"));
+                //fprintf(stdout, "XDG conf dir: %s\n", xdgConfigDir); /* debug */
             }
 
             /* copy the original config file to /etc instead of creating drop-in
