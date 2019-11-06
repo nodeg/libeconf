@@ -147,18 +147,18 @@ int main (int argc, char *argv[]) {
             usage("Too many arguments!\n");
         } else {
             /* At the moment with static values. */
-             char path[15] = ""; /* TODO */
-             char *dir = "/etc/"; /* TODO */
-             char *argv2 = argv[2];
-             char *home = getenv("HOME");
-             bool fileExists = false;
-             bool isRoot = false;
-             uid_t uid = getuid();
-             uid_t euid = geteuid();
+            char path[15] = ""; /* TODO */
+            char *dir = "/etc/"; /* TODO */
+            char *argv2 = argv[2];
+            char *home = getenv("HOME");
+            bool fileExists = false;
+            bool isRoot = false;
+            uid_t uid = getuid();
+            uid_t euid = geteuid();
 
-             /* combine dir and argv[2] and save it in path */
-             snprintf(path, strlen(dir) + 1, "%s", dir);
-             strncat(path, argv2, strlen(argv2));
+            /* combine dir and argv[2] and save it in path */
+            snprintf(path, strlen(dir) + 1, "%s", dir);
+            strncat(path, argv2, strlen(argv2));
 
             char *editor = getenv("EDITOR");
             //fprintf(stdout, "Editor: %s", editor); /* debug */
@@ -215,8 +215,8 @@ int main (int argc, char *argv[]) {
                     }
                 }
                 /* the file does already exist. Just open it. */
-                 //fprintf(stdout, "--force -> file already exists\n"); /* debug */
-                 return execlp(editor, editor, path, NULL);
+                //fprintf(stdout, "--force -> file already exists\n"); /* debug */
+                return execlp(editor, editor, path, NULL);
 
             } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
                                   || (strcmp(argv[3], "--full") != 0))) {
