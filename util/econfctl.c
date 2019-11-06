@@ -257,16 +257,16 @@ static void usage(char *message) {
     fprintf(stderr, "Usage: econfctl [ COMMANDS ] filename.conf\n\n"
         "COMMANDS:\n"
         "show     reads all snippets for filename.conf and prints all groups,"
-                  "keys and their values\n"
+                  " keys and their values\n"
         "cat      prints the content and the name of the file in the order as"
-                  "read by econf_readDirs\n"
+                  " read by econf_readDirs\n"
         "edit     starts the editor EDITOR (environment variable) where the"
-                  "groups, keys and values can be modified and saved afterwards\n"
+                  " groups, keys and values can be modified and saved afterwards\n"
         "            --full:   copy the original configuration file to /etc"
-                               "instead of creating drop-in files\n"
+                               " instead of creating drop-in files\n"
         "            --force:  if the configuration file does not exist, create"
-                               "a new one\n"
+                               " a new one\n"
         "revert   reverts all changes to the vendor versions. Basically deletes"
-                  "the config files in /etc\n\n");
+                  " the config files in /etc\n\n");
     exit(EXIT_FAILURE);
 }
