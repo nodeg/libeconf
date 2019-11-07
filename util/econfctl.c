@@ -29,7 +29,7 @@
 
 #include "libeconf.h"
 
-static void usage();
+static void usage(const char *);
 
 int main (int argc, char *argv[]) {
     econf_file *key_file = NULL;
@@ -148,7 +148,7 @@ int main (int argc, char *argv[]) {
         } else {
             /* At the moment with static values. */
             char path[15] = ""; /* TODO */
-            char *dir = "/etc/"; /* TODO */
+            const char *dir = "/etc/"; /* TODO */
             char *argv2 = argv[2];
             char *home = getenv("HOME");
             bool fileExists = false;
@@ -160,7 +160,7 @@ int main (int argc, char *argv[]) {
             snprintf(path, strlen(dir) + 1, "%s", dir);
             strncat(path, argv2, strlen(argv2));
 
-            char *editor = getenv("EDITOR");
+            const char *editor = getenv("EDITOR");
             //fprintf(stdout, "Editor: %s", editor); /* debug */
             if(editor == NULL) {
                 /* if no editor is specified take vim as default */
@@ -170,9 +170,13 @@ int main (int argc, char *argv[]) {
             char *xdgConfigDir = getenv("XDG_CONFIG_HOME");
             if (xdgConfigDir == NULL) {
                 /* if no XDG_CONFIG_HOME ist specified take ~/.config as
-                 * default */
-                xdgConfigDir = strncat(home, "/.config/", strlen("/.config/"));
+                 * default
+                 */
+                xdgConfigDir = strncat(home, "/.config/", sizeof(home) - strlen(home) - 1);
                 //fprintf(stdout, "XDG conf dir: %s\n", xdgConfigDir); /* debug */
+            } else {
+                /* XDG_CONFIG_HOME does not end with an '/', we have to add one */
+                strncat(path, "/", sizeof(path) - strlen(path) - 1);
             }
 
             /* check if file already exists */
@@ -209,7 +213,7 @@ int main (int argc, char *argv[]) {
                          */
                         snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
                         //fprintf(stdout, "Path: %s\n", path); /* debug */
-                        strncat(path, argv2,strlen(argv2));
+                        strncat(path, argv2, sizeof(path) - strlen(path) - 1);
                         //fprintf(stdout, "Path: %s\n", path); /* debug */
                         return execlp(editor, editor, path, NULL);
                     }
@@ -222,11 +226,14 @@ int main (int argc, char *argv[]) {
                                   || (strcmp(argv[3], "--full") != 0))) {
                 usage("Unknown command!\n");
 
-            } else {
+            } else if (argc == 3) {
                 /* just open vim and let it handle the file */
                 fprintf(stdout, "normal path\n"); /* debug */
                 fprintf(stdout, "Path: %s\n", path); /* debug */
                 return execlp(editor, editor, path, NULL);
+
+            } else {
+                usage("Unknown command!\n");
            }
         }
 
@@ -252,7 +259,7 @@ int main (int argc, char *argv[]) {
 /**
  * @brief Print error messages and show the usage.
  */
-static void usage(char *message) {
+static void usage(const char *message) {
     fprintf(stderr,"%s\n", message);
     fprintf(stderr, "Usage: econfctl [ COMMANDS ] filename.conf\n\n"
         "COMMANDS:\n"
