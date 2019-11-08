@@ -157,8 +157,16 @@ int main (int argc, char *argv[]) {
             uid_t euid = geteuid();
 
             /* combine dir and argv[2] and save it in path */
-            snprintf(path, strlen(dir) + 1, "%s", dir);
-            strncat(path, argv2, strlen(argv2));
+            int printPath = snprintf(path, strlen(dir) + 1, "%s", dir);
+            if (printPath < 0) {
+                fprintf(stderr, "Error in snprintf.\n");
+                exit(EXIT_FAILURE);
+            } else if ((size_t) printPath > sizeof(path)) {
+                fprintf(stderr, "Path too long for array.\n");
+                exit(EXIT_FAILURE);
+            }
+
+            strncat(path, argv2, sizeof(path) - strlen(path) - 1);
 
             const char *editor = getenv("EDITOR");
             //fprintf(stdout, "Editor: %s", editor); /* debug */
@@ -211,8 +219,17 @@ int main (int argc, char *argv[]) {
                          * be adjusted, since then the file is saved in the HOME
                          * directory of the user.
                          */
-                        snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
-                        //fprintf(stdout, "Path: %s\n", path); /* debug */
+                        int printPath = snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
+                        fprintf(stdout, "Characters copied: %d\n", printPath); /* debug */
+                        fprintf(stdout, "Path: %s\n", path); /* debug */
+                        if (printPath < 0) {
+                            fprintf(stderr, "Error in snprintf.\n");
+                            exit(EXIT_FAILURE);
+                        } else if ((size_t) printPath > sizeof(path)) {
+                            fprintf(stderr, "Path too long for array.\n");
+                            exit(EXIT_FAILURE);
+                        }
+
                         strncat(path, argv2, sizeof(path) - strlen(path) - 1);
                         //fprintf(stdout, "Path: %s\n", path); /* debug */
                         return execlp(editor, editor, path, NULL);
