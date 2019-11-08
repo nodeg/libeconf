@@ -212,6 +212,9 @@ int main (int argc, char *argv[]) {
                 if (!fileExists) {
                     if (isRoot) {
                         //fprintf(stdout, "--force, root path\n"); /* debug */
+                        /* adjust path and create file in /etc/file.d/ */
+                        strncat(path, ".d/", sizeof(path) - strlen(path) - 1);
+                        strncat(path, argv2, sizeof(path) - strlen(path) - 1);
                         return execlp(editor, editor, path, NULL);
                     } else {
                         //fprintf(stdout, "--force, not root path\n"); /* debug */
