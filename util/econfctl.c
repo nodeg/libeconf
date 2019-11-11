@@ -139,6 +139,10 @@ int main (int argc, char *argv[]) {
      *         files.
      * --force: if the config does not exist, create a new one.
      *
+     *  TODO:
+     *      - Replace static values (path, dir)
+     *      - Make path dynamic and check if reallocation is necessary
+     *      - Function for checking and increasing the path
      */
     } else if (strcmp(argv[1], "edit") == 0) {
         if (argc < 3) {
@@ -165,11 +169,14 @@ int main (int argc, char *argv[]) {
                 fprintf(stderr, "Path too long for array.\n");
                 exit(EXIT_FAILURE);
             }
-
+            fprintf(stdout, "|--DEBUG messages-- \n"); /* debug */
+            fprintf(stdout, "|--Sizeof(path): %ld\n", sizeof(path)); /* debug */
+            fprintf(stdout, "|++snprintf(): Applying dir to path: %d chars copied\n", printPath); /* debug */
+            fprintf(stdout, "|--Path content: %s\n", path); /* debug */
             strncat(path, argv2, sizeof(path) - strlen(path) - 1);
 
             const char *editor = getenv("EDITOR");
-            //fprintf(stdout, "Editor: %s", editor); /* debug */
+            //fprintf(stdout, "|--Editor: %s\n", editor); /* debug */
             if(editor == NULL) {
                 /* if no editor is specified take vim as default */
                 editor = "/usr/bin/vim";
@@ -203,43 +210,56 @@ int main (int argc, char *argv[]) {
             /* copy the original config file to /etc instead of creating drop-in
              * files */
             if (argc == 4 && strcmp(argv[3], "--full") == 0) {
-                fprintf(stdout, "--full path. stop\n"); /* debug */
+                fprintf(stdout, "|--edit %s --full --> stop\n", argv2); /* debug */
                 /* TODO */
 
             /* if the config file does -not- exist, create it */
             } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
-                //fprintf(stdout, "--force path\n"); /* debug */
+                fprintf(stdout, "|--edit %s --force\n", argv2); /* debug */
                 if (!fileExists) {
                     if (isRoot) {
-                        //fprintf(stdout, "--force, root path\n"); /* debug */
+                        fprintf(stdout, "|--root path\n"); /* debug */
+
                         /* adjust path and create file in /etc/file.d/ */
                         strncat(path, ".d/", sizeof(path) - strlen(path) - 1);
                         strncat(path, argv2, sizeof(path) - strlen(path) - 1);
+                        fprintf(stdout, "|++strncat: Path after adjustments: %s\n", path); /* debug */
+
+                        /* check path length */
+                        if ((strlen(path) + strlen(argv2)) > sizeof(path)) {
+                            fprintf(stderr, "--> Error! Path to long for array.\n");
+                            exit(EXIT_FAILURE);
+                        }
                         return execlp(editor, editor, path, NULL);
                     } else {
-                        //fprintf(stdout, "--force, not root path\n"); /* debug */
+                        fprintf(stdout, "|--not root path\n"); /* debug */
                         /* the user is not root and therefore the path has to
                          * be adjusted, since then the file is saved in the HOME
                          * directory of the user.
                          */
                         int printPath = snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
-                        fprintf(stdout, "Characters copied: %d\n", printPath); /* debug */
-                        fprintf(stdout, "Path: %s\n", path); /* debug */
+
+                        fprintf(stdout, "|++snprintf(): Overwriting path with XDG_CONF_DIR: %d chars copied\n", printPath); /* debug */
+                        fprintf(stdout, "|--Path content: %s\n", path); /* debug */
+
                         if (printPath < 0) {
                             fprintf(stderr, "Error in snprintf.\n");
                             exit(EXIT_FAILURE);
                         } else if ((size_t) printPath > sizeof(path)) {
-                            fprintf(stderr, "Path too long for array.\n");
+                            fprintf(stderr, "--> Error: Path too long for array.\n");
                             exit(EXIT_FAILURE);
                         }
-
                         strncat(path, argv2, sizeof(path) - strlen(path) - 1);
-                        //fprintf(stdout, "Path: %s\n", path); /* debug */
+
+                        fprintf(stdout, "|++strncat\n"); /* debug */
+                        fprintf(stdout, "|--Path: %s\n", path); /* debug */
+                        fprintf(stdout, "|--Sizeof(path): %ld\n", sizeof(path)); /* debug */
+                        fprintf(stdout, "|--Strlen(path): %ld\n", strlen(path)); /* debug */
                         return execlp(editor, editor, path, NULL);
                     }
                 }
                 /* the file does already exist. Just open it. */
-                //fprintf(stdout, "--force -> file already exists\n"); /* debug */
+                fprintf(stdout, "--force -> file already exists\n"); /* debug */
                 return execlp(editor, editor, path, NULL);
 
             } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
