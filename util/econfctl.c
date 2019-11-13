@@ -19,6 +19,7 @@
   SOFTWARE.
 */
 
+#include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -26,12 +27,25 @@
 #include <unistd.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <sys/wait.h>
 
 #include "libeconf.h"
 
 static void usage(const char *);
+static void initPath(void);
+static void checkPath(const char *);
+static void setPath(const char *, bool);
+
+static char *path = NULL;
+static bool path_initialized = false;
+static size_t path_length = 0;
 
 int main (int argc, char *argv[]) {
+    fprintf(stdout, "|DEBUG Messages ------------------------------------| \n"); /* debug */
+    initPath();
+    // fprintf(stdout, "|--Sizeof(path): %ld\n", sizeof(path)); /* debug */
+    // fprintf(stdout, "|--Strlen(path): %ld\n", strlen(path)); /* debug */
+
     econf_file *key_file = NULL;
     econf_err error;
 
@@ -141,8 +155,11 @@ int main (int argc, char *argv[]) {
      *
      *  TODO:
      *      - Replace static values (path, dir)
-     *      - Make path dynamic and check if reallocation is necessary
-     *      - Function for checking and increasing the path
+     *      - Use fork() to be able to use exec for mkdir and open EDITOR
+     *      - Check where the mkdir binary resides (/usr/bin/)
+     *      - Delete parent directory when using edit --force as root when the
+     *        file was not saved and the directory was created before.
+     *      - Work with the information provided by waitpid(2)
      */
     } else if (strcmp(argv[1], "edit") == 0) {
         if (argc < 3) {
@@ -150,8 +167,7 @@ int main (int argc, char *argv[]) {
         } else if (argc > 4) {
             usage("Too many arguments!\n");
         } else {
-            /* At the moment with static values. */
-            char path[15] = ""; /* TODO */
+            /* At the moment with static directory. */
             const char *dir = "/etc/"; /* TODO */
             char *argv2 = argv[2];
             char *home = getenv("HOME");
@@ -160,20 +176,13 @@ int main (int argc, char *argv[]) {
             uid_t uid = getuid();
             uid_t euid = geteuid();
 
-            /* combine dir and argv[2] and save it in path */
-            int printPath = snprintf(path, strlen(dir) + 1, "%s", dir);
-            if (printPath < 0) {
-                fprintf(stderr, "Error in snprintf.\n");
-                exit(EXIT_FAILURE);
-            } else if ((size_t) printPath > sizeof(path)) {
-                fprintf(stderr, "Path too long for array.\n");
-                exit(EXIT_FAILURE);
-            }
-            fprintf(stdout, "|--DEBUG messages-- \n"); /* debug */
-            fprintf(stdout, "|--Sizeof(path): %ld\n", sizeof(path)); /* debug */
-            fprintf(stdout, "|++snprintf(): Applying dir to path: %d chars copied\n", printPath); /* debug */
-            fprintf(stdout, "|--Path content: %s\n", path); /* debug */
-            strncat(path, argv2, sizeof(path) - strlen(path) - 1);
+            setPath(dir, false);
+
+            fprintf(stdout, "|Applying dir to path\n"); /* debug */
+            fprintf(stdout, "|Path content: %s\n", path); /* debug */
+            fprintf(stdout, "|Strlen(path): %ld\n", strlen(path)); /* debug */
+
+            setPath(argv2, true);
 
             const char *editor = getenv("EDITOR");
             //fprintf(stdout, "|--Editor: %s\n", editor); /* debug */
@@ -190,7 +199,7 @@ int main (int argc, char *argv[]) {
                 xdgConfigDir = strncat(home, "/.config/", sizeof(home) - strlen(home) - 1);
                 //fprintf(stdout, "XDG conf dir: %s\n", xdgConfigDir); /* debug */
             } else {
-                /* XDG_CONFIG_HOME does not end with an '/', we have to add one */
+                /* XDG_CONFIG_HOME does not end with an '/', we have to add one manually */
                 strncat(path, "/", sizeof(path) - strlen(path) - 1);
             }
 
@@ -210,56 +219,86 @@ int main (int argc, char *argv[]) {
             /* copy the original config file to /etc instead of creating drop-in
              * files */
             if (argc == 4 && strcmp(argv[3], "--full") == 0) {
-                fprintf(stdout, "|--edit %s --full --> stop\n", argv2); /* debug */
+                fprintf(stdout, "|command: --edit %s --full --> stop\n", argv2); /* debug */
                 /* TODO */
 
             /* if the config file does -not- exist, create it */
             } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
-                fprintf(stdout, "|--edit %s --force\n", argv2); /* debug */
+                fprintf(stdout, "|command: --edit %s --force\n", argv2); /* debug */
                 if (!fileExists) {
+                    fprintf(stdout, "|-File does not exist\n"); /* debug */
                     if (isRoot) {
-                        fprintf(stdout, "|--root path\n"); /* debug */
+                        fprintf(stdout, "|-Root path\n"); /* debug */
 
-                        /* adjust path and create file in /etc/file.d/ */
-                        strncat(path, ".d/", sizeof(path) - strlen(path) - 1);
-                        strncat(path, argv2, sizeof(path) - strlen(path) - 1);
-                        fprintf(stdout, "|++strncat: Path after adjustments: %s\n", path); /* debug */
+                        /* check if file.d directory already exists
+                         * and create new one if it does not.
+                         */
+                        setPath(".d/", true);
 
-                        /* check path length */
-                        if ((strlen(path) + strlen(argv2)) > sizeof(path)) {
-                            fprintf(stderr, "--> Error! Path to long for array.\n");
-                            exit(EXIT_FAILURE);
+                        if (access(path, F_OK) != 0) {
+                            if (errno == ENOENT) {
+                                /* directory does not exist */
+                                fprintf(stdout, "|--Directory does not exist\n"); /* debug */
+
+                                /* create parent directory (filename.d) */
+                                pid_t pid = fork();
+                                if (pid  == -1) {
+                                    fprintf(stderr, "Error during fork().\n");
+                                    exit(EXIT_FAILURE);
+                                } else if (pid == 0) {
+                                    /* child */
+                                    fprintf(stdout, "|--Child: create directory using mkdir\n"); /* debug */
+                                    execlp("/usr/bin/mkdir", "/usr/bin/mkdir", path, NULL);
+                                } else {
+                                    /* parent - TODO */
+                                    int wstatus = 0;
+                                    if(waitpid(pid, &wstatus, 0) == -1) {
+                                        fprintf(stderr, "Error using waitpid().\n");
+                                        exit(EXIT_FAILURE);
+                                    }
+                                    if (WIFEXITED(wstatus)) {
+                                        WEXITSTATUS(wstatus);
+                                    }
+                                }
+                                /* apply filename to path */
+                                setPath(argv2, true);
+
+                                /* TODO: fork() and status check */
+                                return execlp(editor, editor, path, NULL);
+                            }
+                        } else {
+                            fprintf(stdout, "|-Directory already exists\n"); /* debug */
+                            /* apply filename to path */
+                            setPath(argv2, true);
                         }
-                        return execlp(editor, editor, path, NULL);
-                    } else {
-                        fprintf(stdout, "|--not root path\n"); /* debug */
+                        /* TODO: Remove created parent directory if the file was
+                         *       not saved, but only if directory is empty
+                         */
+
+                    } else { // not root
+                        fprintf(stdout, "|-Not root path\n"); /* debug */
                         /* the user is not root and therefore the path has to
                          * be adjusted, since then the file is saved in the HOME
                          * directory of the user.
                          */
-                        int printPath = snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
+                        fprintf(stdout, "|-Overwriting path with XDG_CONF_DIR\n"); /* debug */
+                        setPath(xdgConfigDir, false);
+                        /* concatenate with argv[2] argument */
+                        setPath(argv2, true);
 
-                        fprintf(stdout, "|++snprintf(): Overwriting path with XDG_CONF_DIR: %d chars copied\n", printPath); /* debug */
-                        fprintf(stdout, "|--Path content: %s\n", path); /* debug */
+                        fprintf(stdout, "|-Path: %s\n", path); /* debug */
+                        fprintf(stdout, "|-Sizeof(path): %ld\n", sizeof(path)); /* debug */
+                        fprintf(stdout, "|-Strlen(path): %ld\n", strlen(path)); /* debug */
 
-                        if (printPath < 0) {
-                            fprintf(stderr, "Error in snprintf.\n");
-                            exit(EXIT_FAILURE);
-                        } else if ((size_t) printPath > sizeof(path)) {
-                            fprintf(stderr, "--> Error: Path too long for array.\n");
-                            exit(EXIT_FAILURE);
-                        }
-                        strncat(path, argv2, sizeof(path) - strlen(path) - 1);
-
-                        fprintf(stdout, "|++strncat\n"); /* debug */
-                        fprintf(stdout, "|--Path: %s\n", path); /* debug */
-                        fprintf(stdout, "|--Sizeof(path): %ld\n", sizeof(path)); /* debug */
-                        fprintf(stdout, "|--Strlen(path): %ld\n", strlen(path)); /* debug */
+                        /* TODO: fork() and status check */
                         return execlp(editor, editor, path, NULL);
                     }
                 }
                 /* the file does already exist. Just open it. */
-                fprintf(stdout, "--force -> file already exists\n"); /* debug */
+                fprintf(stdout, "|-File already exists\n"); /* debug */
+                fprintf(stdout, "|-Path: %s\n", path); /* debug */
+
+                /* TODO: fork() and status check */
                 return execlp(editor, editor, path, NULL);
 
             } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
@@ -268,8 +307,10 @@ int main (int argc, char *argv[]) {
 
             } else if (argc == 3) {
                 /* just open vim and let it handle the file */
-                fprintf(stdout, "normal path\n"); /* debug */
-                fprintf(stdout, "Path: %s\n", path); /* debug */
+                fprintf(stdout, "-Normal path\n"); /* debug */
+                fprintf(stdout, "-Path: %s\n", path); /* debug */
+
+                /* TODO: fork() and status check */
                 return execlp(editor, editor, path, NULL);
 
             } else {
@@ -316,4 +357,83 @@ static void usage(const char *message) {
         "revert   reverts all changes to the vendor versions. Basically deletes"
                   " the config files in /etc\n\n");
     exit(EXIT_FAILURE);
+}
+
+/**
+ * @brief Initializes the path array
+ * Initializes the path array with a default length.
+ */
+static void initPath() {
+    fprintf(stdout, "|initPath\n"); /* debug */
+     path = (char *) calloc(40, sizeof(char));
+     if (path != NULL) {
+         path_length = 40;
+         path_initialized = true;
+     } else {
+         fprintf(stderr, "Error using calloc!");
+         exit(EXIT_FAILURE);
+     }
+}
+
+/**
+  * @brief Check the path length and increase it if necessary.
+  * Checks if path is big enough to fit the argument. If not,
+  * path will be increased to the length of arg + 1 and the
+  * path_length variable will be adjusted accordingly.
+  *
+  * @param arg The string whose length will be checked.
+  *
+  */
+static void checkPath(const char *value) {
+    if (path_length <= strlen(value)) {
+        /* path is to small and has to be increased */
+        int *error = realloc(path, (strlen(value) + 1) * sizeof(char));
+        if (error == NULL) {
+            fprintf(stderr, "Error using realloc!");
+            exit(EXIT_FAILURE);
+        }
+        path_length = strlen(value) + 1;
+    }
+}
+
+/**
+  * @brief Sets the path according to the input
+  * First of all the function checkPath() is called to verify the
+  * length of path is sufficient. Then either the given string arg
+  * is concatenated with the existing path, or path is overwritten
+  * with arg.
+  *
+  * @param value The string who is concatenated with the path or who
+  *              overwrites the path.
+  * @param concatenate Bool value to decice if arg is concatenated
+  *                    with path or overwrites path.
+  *                    true: arg is concatenated with existing path
+  *                    false: arg overwrites the existing path
+  */
+static void setPath(const char *value, bool concatenate) {
+    /* checks if path is big enough */
+    checkPath(value);
+
+    fprintf(stdout, "|setPath\n"); /* debug */
+    fprintf(stdout, "|-Path: %s\n", path); /* debug */
+    fprintf(stdout, "|-Path length: %ld\n", path_length); /* debug */
+    fprintf(stdout, "|-Strlen(path): %ld\n", strlen(path)); /* debug */
+
+    if (concatenate) {
+        /* the given string is concatenated with the existing path */
+        strncat(path, value, strlen(value));
+
+        fprintf(stdout, "|-Concatenate: path after: %s\n", path); /* debug */
+        fprintf(stdout, "|-Concatenate: strlen(path): %ld\n", strlen(path)); /* debug */
+        fprintf(stdout, "|-------------------------------------------------\n"); /* debug */
+
+    } else {
+        /* overwrite path with given string */
+        snprintf(path, strlen(value) + 1, "%s", value);
+
+        fprintf(stdout, "|-Overwritten: path is overwritten\n"); /* debug */
+        fprintf(stdout, "|-Overwritten: new path: %s\n", path); /* debug */
+        fprintf(stdout, "|-Overwritten: strlen(path): %ld\n", strlen(path)); /* debug */
+        fprintf(stdout, "|-------------------------------------------------\n"); /* debug */
+    }
 }
