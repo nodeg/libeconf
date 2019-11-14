@@ -36,6 +36,7 @@ static void initPath(void);
 static void checkPath(const char *);
 static void setPath(const char *, bool);
 static bool fileExist(const char *);
+static void newProcess(const char *, const char *);
 
 static char *path = NULL;
 static bool path_initialized = false;
@@ -153,11 +154,13 @@ int main (int argc, char *argv[]) {
      * --full: copy the original config file to /etc instead of creating drop-in
      *         files.
      * --force: if the config does not exist, create a new one.
+     *          If the user has super user rights, the file will be created in
+     *          /etc/file.d/. Otherwise the file will be created in XDG_CONF_HOME,
+     *          which is normally $HOME/.config/.
      *
      *  TODO:
      *      - Replace static values (path, dir)
-     *      - Use fork() to be able to use exec for mkdir and open EDITOR
-     *      - Check where the mkdir binary resides (/usr/bin/)
+     *      - [Check where the mkdir binary resides (/usr/bin/)] necessary?
      *      - Delete parent directory when using edit --force as root when the
      *        file was not saved and the directory was created before.
      *      - Work with the information provided by waitpid(2)
@@ -168,8 +171,7 @@ int main (int argc, char *argv[]) {
         } else if (argc > 4) {
             usage("Too many arguments!\n");
         } else {
-            /* At the moment with static directory. */
-            const char *dir = "/etc/"; /* TODO */
+
             char *argv2 = argv[2];
             char *home = getenv("HOME");
             bool fileExists = false;
@@ -177,7 +179,8 @@ int main (int argc, char *argv[]) {
             uid_t uid = getuid();
             uid_t euid = geteuid();
 
-            setPath(dir, false);
+            /* At the moment with static directory. Integrate libeconf! TODO */
+            setPath("/etc/", false);
 
             fprintf(stdout, "|Applying dir to path\n"); /* debug */
             fprintf(stdout, "|Path content: %s\n", path); /* debug */
@@ -201,6 +204,7 @@ int main (int argc, char *argv[]) {
                 //fprintf(stdout, "XDG conf dir: %s\n", xdgConfigDir); /* debug */
             } else {
                 /* XDG_CONFIG_HOME does not end with an '/', we have to add one manually */
+                /* TODO: needs to be fixed */
                 strncat(path, "/", sizeof(path) - strlen(path) - 1);
             }
 
@@ -223,9 +227,9 @@ int main (int argc, char *argv[]) {
             } else if (argc == 4 && strcmp(argv[3], "--force") == 0) {
                 fprintf(stdout, "|command: --edit %s --force\n", argv2); /* debug */
                 if (!fileExists) {
-                    fprintf(stdout, "|-File does not exist\n"); /* debug */
+                    fprintf(stdout, "|-File does not exist in /etc\n"); /* debug */
                     if (isRoot) {
-                        fprintf(stdout, "|-Root path\n"); /* debug */
+                        fprintf(stdout, "|-> Root path\n"); /* debug */
 
                         /* check if file.d directory already exists
                          * and create new one if it does not.
@@ -238,46 +242,29 @@ int main (int argc, char *argv[]) {
                                 fprintf(stdout, "|--Directory does not exist\n"); /* debug */
 
                                 /* create parent directory (filename.d) */
-                                pid_t pid = fork();
-                                if (pid  == -1) {
-                                    fprintf(stderr, "Error during fork().\n");
-                                    exit(EXIT_FAILURE);
-                                } else if (pid == 0) {
-                                    /* child */
-                                    fprintf(stdout, "|--Child: create directory using mkdir\n"); /* debug */
-                                    execlp("/usr/bin/mkdir", "/usr/bin/mkdir", path, NULL);
-                                } else {
-                                    /* parent - TODO */
-                                    int wstatus = 0;
-                                    if(waitpid(pid, &wstatus, 0) == -1) {
-                                        fprintf(stderr, "Error using waitpid().\n");
-                                        exit(EXIT_FAILURE);
-                                    }
-                                    if (WIFEXITED(wstatus)) {
-                                        WEXITSTATUS(wstatus);
-                                    }
-                                }
+                                newProcess("/usr/bin/mkdir", path);
                                 /* apply filename to path */
                                 setPath(argv2, true);
 
-                                /* TODO: fork() and status check */
-                                return execlp(editor, editor, path, NULL);
+                                /* open EDITOR in child process */
+                                newProcess(editor, path);
                             }
                         } else {
                             fprintf(stdout, "|-Directory already exists\n"); /* debug */
+
                             /* apply filename to path */
                             setPath(argv2, true);
+
+                            /* Open $EDITOR in new process */
+                            newProcess(editor, path);
                         }
-                        /* TODO: Remove created parent directory if the file was
-                         *       not saved, but only if directory is empty
-                         */
 
                     } else { // not root
-                        fprintf(stdout, "|-Not root path\n"); /* debug */
                         /* the user is not root and therefore the path has to
                          * be adjusted, since then the file is saved in the HOME
                          * directory of the user.
                          */
+                        fprintf(stdout, "|-> Not root path\n"); /* debug */
                         fprintf(stdout, "|-Overwriting path with XDG_CONF_DIR\n"); /* debug */
                         setPath(xdgConfigDir, false);
                         /* concatenate with argv[2] argument */
@@ -287,28 +274,30 @@ int main (int argc, char *argv[]) {
                         fprintf(stdout, "|-Sizeof(path): %ld\n", sizeof(path)); /* debug */
                         fprintf(stdout, "|-Strlen(path): %ld\n", strlen(path)); /* debug */
 
-                        /* TODO: fork() and status check */
-                        return execlp(editor, editor, path, NULL);
-                    }
-                }
-                /* the file does already exist. Just open it. */
-                fprintf(stdout, "|-File already exists\n"); /* debug */
-                fprintf(stdout, "|-Path: %s\n", path); /* debug */
+                        /* Open $EDITOR in new process */
+                        newProcess(editor, path);
 
-                /* TODO: fork() and status check */
-                return execlp(editor, editor, path, NULL);
+                    }
+                } else {
+                    /* the file does already exist. Just open it. */
+                    /* check for su rights and then open it. otherwise make copy? */
+                    fprintf(stdout, "|-File already exists\n"); /* debug */
+                    fprintf(stdout, "|-Path: %s\n", path); /* debug */
+
+                    newProcess(editor, path);
+                }
 
             } else if (argc == 4 && ((strcmp(argv[3], "--force") != 0)
                                   || (strcmp(argv[3], "--full") != 0))) {
                 usage("Unknown command!\n");
 
             } else if (argc == 3) {
-                /* just open vim and let it handle the file */
-                fprintf(stdout, "-Normal path\n"); /* debug */
-                fprintf(stdout, "-Path: %s\n", path); /* debug */
+                /* just open $EDITOR and let it handle the file */
+                fprintf(stdout, "|-> Normal path\n"); /* debug */
+                fprintf(stdout, "|-Path: %s\n", path); /* debug */
 
-                /* TODO: fork() and status check */
-                return execlp(editor, editor, path, NULL);
+                /* Open $EDITOR in new process */
+                newProcess(editor, path);
 
             } else {
                 usage("Unknown command!\n");
@@ -369,6 +358,39 @@ static bool fileExist(const char *file) {
         return false;
     }
 }
+
+/**
+ * @brief Creates a new process to execute a command.
+ * @param command The command which should be executed
+ * @param path The path necessary for the command
+ *
+ */
+static void newProcess(const char *command, const char *path) {
+    /* create new process */
+    fprintf(stdout, "|Starting fork()\n");
+    pid_t pid = fork();
+    int wstatus = 0;
+    if (pid == -1) {
+        fprintf(stderr, "Error with fork().\n");
+        exit(EXIT_FAILURE);
+
+    } else if (pid == 0) {
+        /* child */
+        fprintf(stdout, "|-Child: execlp() \n"); /* debug */
+        execlp(command, command, path, NULL);
+
+    } else {
+        /* parent TODO */
+        if (waitpid(pid, &wstatus, 0) == - 1) {
+            fprintf(stderr, "Error using waitpid().\n");
+            exit(EXIT_FAILURE);
+        }
+        if (WIFEXITED(wstatus)) {
+            fprintf(stdout, "|-Exitstatus: %d\n", WEXITSTATUS(wstatus));
+        }
+    }
+}
+
 /**
  * @brief Initializes the path array
  * Initializes the path array with a default length.
