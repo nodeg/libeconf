@@ -35,6 +35,7 @@ static void usage(const char *);
 static void initPath(void);
 static void checkPath(const char *);
 static void setPath(const char *, bool);
+static bool fileExist(const char *);
 
 static char *path = NULL;
 static bool path_initialized = false;
@@ -204,11 +205,7 @@ int main (int argc, char *argv[]) {
             }
 
             /* check if file already exists */
-            if (access(path, F_OK) != -1) {
-                fileExists = true;
-            } else {
-                fileExists = false;
-            }
+            fileExists = fileExist(path);
             /* basic write permission checking by using uid/euid */
             if (uid == 0 && uid == euid) {
                 isRoot = true;
@@ -359,6 +356,19 @@ static void usage(const char *message) {
     exit(EXIT_FAILURE);
 }
 
+/**
+ * @brief Checks if a file already exists
+ * @param file The file to check
+ * @return true if the file already exists
+ *         false if the file does not exist
+ */
+static bool fileExist(const char *file) {
+    if (access(file, F_OK) != -1) {
+        return true;
+    } else {
+        return false;
+    }
+}
 /**
  * @brief Initializes the path array
  * Initializes the path array with a default length.
