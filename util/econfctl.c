@@ -38,7 +38,7 @@ static void newProcess(const char *, char *, const char *, econf_file *);
 
 static const char *TMPPATH= "/tmp";
 static const char *TMPFILE_1 = "econfctl.tmp";
-static const char *TMPFILE_2 = "econfctl_merged.tmp";
+static const char *TMPFILE_2 = "econfctl_changes.tmp";
 static bool isRoot = false;
 
 int main (int argc, char *argv[]) {
@@ -409,6 +409,7 @@ int main (int argc, char *argv[]) {
         if (argc >= 4) {
             usage("Too many arguments!\n");
         }
+        /* TODO */
 
     } else {
         usage("Unknown command!\n");
@@ -510,7 +511,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
 
     } else if (pid == 0) { /* child */
 
-        /* write contents of the key_file to 2 temporary files */
+        /* write contents of key_file to 2 temporary files */
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_1)))
         {
             fprintf(stdout, "|-Child: econf_writeFile() 1 Error!\n"); /* debug */
@@ -527,8 +528,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
         }
 
         /*
-         * combine path and filename of the tmp file and set permission to 600
-         * for both
+         * combine path and filename of the tmp files and set permission to 600
          */
         size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_1) + 2;
         char combined_tmp1[combined_length];
@@ -549,7 +549,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
         if (perm != 0) {
             exit(EXIT_FAILURE);
         }
-        /* execude given command and save as TMPFILE_2 */
+        /* execute given command and save as TMPFILE_2 */
         execlp(command, command, combined_tmp2, (char *) NULL);
 
     } else { /* parent */
@@ -561,7 +561,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
             fprintf(stdout, "|-Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus));
         }
 
-        /* saved edits in new key_file */
+        /* save edits in new key_file */
         econf_file *key_file_after = NULL;
         size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_2) + 2;
         char tmpFile[combined_length];
@@ -578,8 +578,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
         }
 
         if (isRoot) {
-            /* only ask user with su rights to save the whole file as drop-in in
-             * /etc/filename.d directory
+            /* only ask root to save the file as a drop-in file in /etc/filename.d/
              * TODO: only save -changes- as drop-in file
              */
             char input[2] = "";
@@ -588,7 +587,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
                 fgets(input, 2, stdin);
             } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
 
-            /* create new path where the file will be saved */
+            /* construct new path where the file will be saved */
             char savePath[4096];
             memset(savePath, 0, 4096);
 
@@ -599,7 +598,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
                 fprintf(stdout, "filename: %s\n", filename);  /* debug */
                 fprintf(stdout, "dirExist() (1 = Yes): %d\n", dirExist(savePath));  /* debug */
 
-                /* check if /etc/filename.d directory exists and create it if necessary */
+                /* check if /etc/filename.d/ directory exists and create it otherwise */
                 if (!dirExist(savePath)) {
                     /* create parent directory (filename.d) */
                     fprintf(stdout, "create parent directory\n");  /* debug */
@@ -623,8 +622,8 @@ static void newProcess(const char *command, char *path, const char *filename, ec
                  * file in /etc
                  */
                 snprintf(savePath, strlen(path) + 2, "%s%s", path, "/");
-                fprintf(stdout,"Overwriting file in /etc\n");
-                fprintf(stdout,"savePath: %s\n", savePath);
+                fprintf(stdout,"Overwriting file in /etc\n"); /* debug */
+                fprintf(stdout,"savePath: %s\n", savePath); /* debug */
                 if ((error = econf_writeFile(key_file_after, savePath, filename)))
                 {
                     fprintf(stdout, "Save normally in /etc: econf_writeFile() 5 Error!\n"); /* debug */
@@ -635,7 +634,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
                 }
             }
         } else {
-            /* no su rights. Save file in $HOME/.config/ */
+            /* not root. Save file in $HOME/.config/ */
             fprintf(stdout, "Save normally in xdgConfigDir\n"); /* debug */
             if ((error = econf_writeFile(key_file_after, path, filename)))
             {
