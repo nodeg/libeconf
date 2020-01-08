@@ -409,8 +409,34 @@ int main (int argc, char *argv[]) {
         if (argc >= 4) {
             usage("Too many arguments!\n");
         }
-        /* TODO */
+        
+        char input[2] = "";
 
+        /* let the user verify 2 times that the file should really be deleted */ 
+        do {
+            fprintf(stdout, "Delete file /etc/%s?\nYes [y], no [n]\n", argv[2]);
+            scanf("%2s", input);
+        } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
+
+        if (strcmp(input, "y") == 0) {
+            memset(input, 0, 2);
+            do {
+                fprintf(stdout, "Do you really wish to delete the file /etc/%s?\n", argv[2]);
+                fprintf(stdout, "There is no going back!\nYes [y], no [n]\n");
+                scanf("%2s", input);
+            } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
+
+            if(strcmp(input, "y") == 0) {
+                snprintf(pathFilename, strlen(filename) + strlen(suffix) + 8, "%s%s%s", "/etc/", filename, suffix);
+
+                int status = remove(pathFilename);
+                if (status != 0) {
+                    fprintf(stdout, "%s\n", strerror(errno));
+                } else {
+                    fprintf(stdout, "File %s deleted!\n", pathFilename);
+                }
+            }
+        }
     } else {
         usage("Unknown command!\n");
     }
