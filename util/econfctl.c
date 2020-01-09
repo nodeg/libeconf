@@ -34,7 +34,7 @@
 static void usage(const char *);
 static bool fileExist(const char *);
 static bool dirExist(const char *);
-static void newProcess(const char *, char *, const char *, econf_file *);
+static void newProcess(const char *, char *, const char *, const char *, econf_file *);
 
 static const char *TMPPATH= "/tmp";
 static const char *TMPFILE_1 = "econfctl.tmp";
@@ -56,6 +56,7 @@ int main (int argc, char *argv[]) {
     char path[4096]; /* the path of the config file */
     char home[4096]; /* the path of the home directory */
     char filename[4096]; /* the filename without the suffix */
+    char filenameSuffix[4096]; /* the filename with the suffix */
     char pathFilename[4096]; /* the path concatenated with the filename */
     uid_t uid = getuid();
     uid_t euid = geteuid();
@@ -98,15 +99,21 @@ int main (int argc, char *argv[]) {
         posLastDot = strrchr(argv[3], 46); /* . (dot) in ASCII is 46 */
     }
     if (posLastDot == NULL) {
-        usage("Currently only working with a dot in the filename!\n");
+        usage("Currently only works with a dot in the filename!\n");
         exit(EXIT_FAILURE);
     }
     suffix = posLastDot;
 
-    if (argc == 3) {
-        snprintf(filename, strlen(argv[2]) -  strlen(posLastDot) + 1, "%s", argv[2]);
-    } else {
+    /* set filename to the proper argv argument
+     * argc == 3 -> edit
+     * argc == 4 -> edit --force / --full
+     */
+    if (argc == 4) {
         snprintf(filename, strlen(argv[3]) -  strlen(posLastDot) + 1, "%s", argv[3]);
+        snprintf(filenameSuffix, strlen(argv[3]) + 1, "%s", argv[3]);
+    } else {
+        snprintf(filename, strlen(argv[2]) -  strlen(posLastDot) + 1, "%s", argv[2]);
+         snprintf(filenameSuffix, strlen(argv[2]) + 1, "%s", argv[2]);
     }
 
     /**
@@ -128,18 +135,18 @@ int main (int argc, char *argv[]) {
      * @param comment The comment character used in the config file.
      *
      */
-    fprintf(stdout, "|-Filling key_file\n"); /* debug */
+    fprintf(stdout, "|Filling key_file\n"); /* debug */
 
     /* TODO: - replace static values for directories
      *       - edit --force creates the config file if it does not already
-     *         exists, so econf_readDirs() will always abort here.
+     *         exists, so econf_readDirs() will always fail here.
      */
-    if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
-    {
-            fprintf(stderr, "%s\n", econf_errString(error));
-            econf_free(key_file);
-            return EXIT_FAILURE;
-    }
+    // if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
+    // {
+    //         fprintf(stderr, "%s\n", econf_errString(error));
+    //         econf_free(key_file);
+    //         return EXIT_FAILURE;
+    // }
 
     /**
      * @brief This command will read all snippets for filename.conf
@@ -152,6 +159,18 @@ int main (int argc, char *argv[]) {
         }
         if (argc >= 4) {
             usage("Too many arguments!\n");
+        }
+
+        fprintf(stdout, "|command: econfctl edit %s\n", filename); /* debug */
+        fprintf(stdout, "|filename: %s\n", filename); /* debug */
+        fprintf(stdout, "|path: %s\n", path); /* debug */
+        fprintf(stdout, "|pathFilename: %s\n\n", pathFilename); /* debug */
+
+        if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
+        {
+            fprintf(stderr, "%s\n", econf_errString(error));
+            econf_free(key_file);
+            return EXIT_FAILURE;
         }
 
         char **groups = NULL;
@@ -217,15 +236,20 @@ int main (int argc, char *argv[]) {
      *        changes afterwards.
      * --full: copy the original config file to /etc instead of creating drop-in
      *         files.
-     * --force: if the config does not exist, create a new one.
-     *          If the user has super user rights, the file will be created in
-     *          /etc/file.d/. Otherwise the file will be created in XDG_CONF_HOME,
-     *          which is normally $HOME/.config/.
+     * --force: if the config file does not exist, create a new one.
+     *          If the user is root, the file will be created in /etc/filename.d/.
+     * Otherwise the file will be created in XDG_CONF_HOME, which is normally
+     * $HOME/.config/.
      *
      *  TODO:
      *      - Replace static values (path, dir) with libeconf API calls
      */
     } else if (strcmp(argv[1], "edit") == 0) {
+        fprintf(stdout, "|command: edit --initial--\n"); /* debug */
+        fprintf(stdout, "|filename: %s\n", filename); /* debug */
+        fprintf(stdout, "|path: %s\n", path); /* debug */
+        fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+
         if (argc < 3) {
             usage("Missing filename!\n");
             exit(EXIT_FAILURE);
@@ -238,22 +262,13 @@ int main (int argc, char *argv[]) {
         } else if (argc == 3 && ((strcmp(argv[2], "--force") == 0) || (strcmp(argv[2], "--full") == 0))) {
                 usage("Missing filename!\n");
                 exit(EXIT_FAILURE);
-        } else {
-            /* set filename to the proper argv argument
-             * argc == 3 -> edit
-             * argc == 4 -> edit --force / --full
-             */
-            if (argc == 3) {
-                snprintf(filename, strlen(argv[2]) + 1, "%s", argv[2]);
-            } else if (argc == 4) {
-                snprintf(filename, strlen(argv[3]) + 1, "%s", argv[3]);
-            }
+        } else {           
 
-            /* set path to given string
-             * TODO: replace static value
+            /* set path to /etc
+             * TODO: replace static path value
              */
             snprintf(path, strlen("/etc") + 1, "%s", "/etc");
-            fprintf(stdout, "|-Path: %s\n", path); /* debug */
+            fprintf(stdout, "|Path: %s\n", path); /* debug */
 
             const char *editor = getenv("EDITOR");
             if(editor == NULL) {
@@ -267,28 +282,49 @@ int main (int argc, char *argv[]) {
                  */
                 strncat(home, CONFDIR, sizeof(home) - strlen(home) - 1);
                 xdgConfigDir = home;
-                fprintf(stdout, "|-XDG conf dir: %s\n", xdgConfigDir); /* debug */
+                fprintf(stdout, "|XDG conf dir: %s\n", xdgConfigDir); /* debug */
             }
 
-            /* copy the original config file to /etc/filename.d/ instead of
+            /* copy the original config file to /etc/ instead of
              * creating drop-in files
              * TODO:
              *  - check if config file exists; probably with libeconf
              *  - check for root permissions
              *  - open file with $EDITOR
-             *  - call econf_writeFile() to save key_file as file in /etc
+             *  - call econf_writeFile() to save key_file as file in /etc/
              */
             if (argc == 4 && strcmp(argv[2], "--full") == 0) {
-                fprintf(stdout, "|command: edit --full %s --> TODO\n", filename); /* debug */
-
-            /* if the config file does -not- exist, create it */
-            } else if (argc == 4 && strcmp(argv[2], "--force") == 0) {
-                snprintf(pathFilename, strlen(path) + strlen(filename) + 2, "%s%s%s", path, "/", filename);
-
-                fprintf(stdout, "|command: edit --force %s\n", filename); /* debug */
+                fprintf(stdout, "|command: econfctl edit --full %s --> TODO\n", filename); /* debug */
                 fprintf(stdout, "|filename: %s\n", filename); /* debug */
                 fprintf(stdout, "|path: %s\n", path); /* debug */
                 fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+
+                if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
+                {
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(key_file);
+                    return EXIT_FAILURE;
+                }
+
+
+
+            /* if the config file does -not- exist, create it in /etc/ */
+            } else if (argc == 4 && strcmp(argv[2], "--force") == 0) {
+                snprintf(pathFilename, strlen(path) + strlen(filenameSuffix) + 2, "%s%s%s", path, "/", filenameSuffix);
+
+                fprintf(stdout, "|command: econfctl edit --force %s\n", filename); /* debug */
+                fprintf(stdout, "|filename: %s\n", filename); /* debug */
+                fprintf(stdout, "|filename with suffix: %s\n", filenameSuffix); /* debug */
+                fprintf(stdout, "|path: %s\n", path); /* debug */
+                fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+
+                /* create new emtpy key_file with the libeconf API */
+                if ((error = econf_newIniFile(&key_file)))
+                {
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(key_file);
+                    return EXIT_FAILURE;
+                }
 
                 if (!fileExist(pathFilename)) {
                     fprintf(stdout, "|--File does not exist in /etc\n"); /* debug */
@@ -321,7 +357,7 @@ int main (int argc, char *argv[]) {
                             fprintf(stdout, "|--filename for newProcess(): %s\n", filename); /* debug */
 
                             /* open EDITOR in child process */
-                            newProcess(editor, path, filename, key_file);
+                            newProcess(editor, path, filename, filenameSuffix, key_file);
 
                             /* cleanup: if no file was saved, delete newly
                              * created directory.
@@ -338,13 +374,15 @@ int main (int argc, char *argv[]) {
 
                         } else { /* filename.d directory does already exist */
                             fprintf(stdout, "|--Directory already exists\n"); /* debug */
+                            fprintf(stdout, "|--pathFilename: %s\n", pathFilename); /* debug */
 
-                            /* apply filename to path */
-                            strncat(path, filename, sizeof(path) - strlen(path) - 1);
-                            fprintf(stdout, "|--Path: %s\n", path); /* debug */
+                            /* concatenate path and filename */
+                            memset(pathFilename, 0, 4096);
+                            snprintf(pathFilename, strlen(path) + strlen(filename) + 2, "%s%s%s", path, "/", filename);
+                            fprintf(stdout, "|--New pathFilename: %s\n", pathFilename); /* debug */
 
                             /* Open $EDITOR in new process */
-                            newProcess(editor, path, filename, key_file);
+                            newProcess(editor, path, filename, filenameSuffix, key_file);
                         }
                     } else {
                         /* not root
@@ -358,28 +396,37 @@ int main (int argc, char *argv[]) {
                         snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
 
                         fprintf(stdout, "|--Path: %s\n", path); /* debug */
-                        fprintf(stdout, "|-Path: %s\n", path); /* debug */
 
                         /* Open $EDITOR in new process */
-                        newProcess(editor, path, filename, key_file);
+                        newProcess(editor, path, filename, filenameSuffix, key_file);
                     }
                 } else {
-                    /* the file does already exist. Set new path
-                     */
+                    /* the file does already exist. */
                     fprintf(stdout, "|--File already exists\n"); /* debug */
-                    snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
+                    //snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
                     fprintf(stdout, "|--Path: %s\n", path); /* debug */
 
-                    newProcess(editor, path, filename, key_file);
+                    newProcess(editor, path, filename, filenameSuffix, key_file);
                 }
 
             /* just open $EDITOR and let it handle the file */
             } else if (argc == 3 && ((strcmp(argv[2], "--force") != 0) || (strcmp(argv[2], "--full") != 0))) {
+                fprintf(stdout, "|command: econfctl edit %s\n", filename); /* debug */
+                fprintf(stdout, "|filename: %s\n", filename); /* debug */
+                fprintf(stdout, "|path: %s\n", path); /* debug */
+                fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+
+                if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
+                {
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(key_file);
+                    return EXIT_FAILURE;
+                }
                 if (isRoot) {
                     /* Open $EDITOR in new process */
                     fprintf(stdout, "|-> Normal path, root\n"); /* debug */
                     fprintf(stdout, "|-Path: %s\n\n", path); /* debug */
-                    newProcess(editor, path, filename, key_file);
+                    newProcess(editor, path, filename, filenameSuffix, key_file);
                 } else {
                     /* the user is not root and therefore the path has to
                      * be adjusted, since then the file is saved in the HOME
@@ -391,7 +438,7 @@ int main (int argc, char *argv[]) {
                     snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
                     fprintf(stdout, "|-Overwriting path with XDG_CONF_DIR: %s\n\n", path); /* debug */
 
-                    newProcess(editor, path, filename, key_file);
+                    newProcess(editor, path, filename, filenameSuffix, key_file);
                 }
             } else {
                 usage("Unknown command!\n");
@@ -521,11 +568,12 @@ static bool dirExist(const char *dir) {
  * TODO: - make a diff of the two tmp files to see what actually changed and
  *         write only that change e.g. into a drop-in file.
  */
-static void newProcess(const char *command, char *path, const char *filename, econf_file *key_file) {
+static void newProcess(const char *command, char *path, const char *filename, const char *filenameSuffix, econf_file *key_file) {
     fprintf(stdout, "\n|----Starting fork()----\n"); /* debug */
     fprintf(stdout, "|-command: %s\n", command); /* debug */
     fprintf(stdout, "|-path: %s\n", path); /* debug */
     fprintf(stdout, "|-filename: %s\n", filename); /* debug */
+    fprintf(stdout, "|-filename with suffix: %s\n", filenameSuffix); /* debug */
 
     econf_err error;
     int wstatus = 0;
@@ -609,7 +657,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
              */
             char input[2] = "";
             do {
-                fprintf(stdout, "Save as drop-in file in /etc/%s.d?\nyes [y], no [n]\n", filename);
+                fprintf(stdout, "Save as drop-in file in /etc/%s.d?\nyes [y], no [n]\n", filenameSuffix);
                 fgets(input, 2, stdin);
             } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
 
@@ -618,24 +666,25 @@ static void newProcess(const char *command, char *path, const char *filename, ec
             memset(savePath, 0, 4096);
 
             if (strcmp(input, "y") == 0) {
-                snprintf(savePath, strlen(path) + strlen(filename) + 4, "%s%s%s%s", path, "/", filename, ".d");
+                snprintf(savePath, strlen(path) + strlen(filenameSuffix) + 4, "%s%s%s%s", path, "/", filenameSuffix, ".d");
 
                 fprintf(stdout, "savePath: %s\n", savePath);  /* debug */
                 fprintf(stdout, "filename: %s\n", filename);  /* debug */
+                fprintf(stdout, "filenameSuffix: %s\n", filenameSuffix);  /* debug */
                 fprintf(stdout, "dirExist() (1 = Yes): %d\n", dirExist(savePath));  /* debug */
 
                 /* check if /etc/filename.d/ directory exists and create it otherwise */
                 if (!dirExist(savePath)) {
                     /* create parent directory (filename.d) */
                     fprintf(stdout, "create parent directory\n");  /* debug */
-                    int mkDir = mkdir(savePath, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP); // 750
+                    int mkDir = mkdir(savePath, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH); // 755
                     if (mkDir != 0) {
                         fprintf(stderr, "Error with mkdir()!\n");
                         econf_free(key_file);
                         exit(EXIT_FAILURE);
                     }
                 }
-                if ((error = econf_writeFile(key_file_after, savePath, filename)))
+                if ((error = econf_writeFile(key_file_after, savePath, filenameSuffix)))
                 {
                     fprintf(stdout, "Save as drop-in file: econf_writeFile() 4 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
@@ -643,14 +692,15 @@ static void newProcess(const char *command, char *path, const char *filename, ec
                     econf_free(key_file_after);
                     exit(EXIT_FAILURE);
                 }
-            } else {
+            } else {    
                 /* do not save as drop in file, instead overwrite existing
                  * file in /etc
                  */
+                fprintf(stdout,"Path: %s\n", path); /* debug */
                 snprintf(savePath, strlen(path) + 2, "%s%s", path, "/");
-                fprintf(stdout,"Overwriting file in /etc\n"); /* debug */
+                fprintf(stdout,"No drop-in --> Overwriting file in /etc\n"); /* debug */
                 fprintf(stdout,"savePath: %s\n", savePath); /* debug */
-                if ((error = econf_writeFile(key_file_after, savePath, filename)))
+                if ((error = econf_writeFile(key_file_after, savePath, filenameSuffix)))
                 {
                     fprintf(stdout, "Save normally in /etc: econf_writeFile() 5 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
@@ -662,7 +712,7 @@ static void newProcess(const char *command, char *path, const char *filename, ec
         } else {
             /* not root. Save file in $HOME/.config/ */
             fprintf(stdout, "Save normally in xdgConfigDir\n"); /* debug */
-            if ((error = econf_writeFile(key_file_after, path, filename)))
+            if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
             {
                 fprintf(stdout, "Save normally in xdgConfigDir: econf_writeFile() 5 Error!\n"); /* debug */
                 fprintf(stderr, "%s\n", econf_errString(error));
