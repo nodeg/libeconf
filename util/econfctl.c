@@ -43,9 +43,15 @@ static bool isRoot = false;
 
 int main (int argc, char *argv[]) {
     fprintf(stdout, "\n|------------------DEBUG Messages------------------| \n"); /* debug */
+
     /* only do something if we have an input */
     if (argc < 3) {
-        usage("Missing command!\n");
+        usage("Missing command or filename!\n");
+    } else if (argc > 4) {
+        usage("Too many arguments!\n");
+    } else if (argc == 3 && (strcmp(argv[2], "--full") == 0 || strcmp(argv[2], "--force") == 0)) {
+        usage("Missing filename!\n");
+        exit(EXIT_FAILURE);
     }
 
     static const char CONFDIR[] = "/.config";
@@ -79,13 +85,8 @@ int main (int argc, char *argv[]) {
     } else {
         isRoot = false;
     }
-    snprintf(home, strlen(getenv("HOME")) + 1, "%s", getenv("HOME"));
-
-
-    if (argc == 3 && (strcmp(argv[2], "--full") == 0 || strcmp(argv[2], "--force") == 0)) {
-        usage("Missing filename force/full!\n");
-        exit(EXIT_FAILURE);
-    }
+    /* set home directory */
+    snprintf(home, strlen(getenv("HOME")) + 1, "%s", getenv("HOME"));    
 
     /* get position of the last dot in the filename to extract
      * the suffix from it.
@@ -114,39 +115,8 @@ int main (int argc, char *argv[]) {
     } else {
         snprintf(filename, strlen(argv[2]) -  strlen(posLastDot) + 1, "%s", argv[2]);
          snprintf(filenameSuffix, strlen(argv[2]) + 1, "%s", argv[2]);
-    }
-
-    /**
-     * econf_err econf_readDirs(econf_file **key_file,
-     *				const char *usr_conf_dir,
-     *				const char *etc_conf_dir,
-     *				const char *project_name,
-     *				const char *config_suffix,
-     *				const char *delimiter,
-     *				const char *comment);
-     *
-     * @brief Read the specified config file in /etc and /usr.
-     * @param key_file The econf_file struct.
-     * @param usr_conf_dir The /usr path of the config file.
-     * @param etc_conf_dir The /etc path of the config file.
-     * @param project_name The file name itself.
-     * @param config_suffix The file extension.
-     * @param delimiter The delimiter used in the config file.
-     * @param comment The comment character used in the config file.
-     *
-     */
-    fprintf(stdout, "|Filling key_file\n"); /* debug */
-
-    /* TODO: - replace static values for directories
-     *       - edit --force creates the config file if it does not already
-     *         exists, so econf_readDirs() will always fail here.
-     */
-    // if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
-    // {
-    //         fprintf(stderr, "%s\n", econf_errString(error));
-    //         econf_free(key_file);
-    //         return EXIT_FAILURE;
-    // }
+    }  
+    
 
     /**
      * @brief This command will read all snippets for filename.conf
@@ -154,17 +124,11 @@ int main (int argc, char *argv[]) {
      *        values as an application would see them.
      */
     if (strcmp(argv[1], "show") == 0) {
-        if (argc < 3) {
-            usage("Missing filename!\n");
-        }
-        if (argc >= 4) {
-            usage("Too many arguments!\n");
-        }
-
         fprintf(stdout, "|command: econfctl edit %s\n", filename); /* debug */
         fprintf(stdout, "|filename: %s\n", filename); /* debug */
         fprintf(stdout, "|path: %s\n", path); /* debug */
         fprintf(stdout, "|pathFilename: %s\n\n", pathFilename); /* debug */
+        fprintf(stdout, "|Filling key_file\n"); /* debug */
 
         if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
         {
@@ -222,12 +186,7 @@ int main (int argc, char *argv[]) {
      * TODO
      */
     } else if (strcmp(argv[1], "cat") == 0) {
-        if (argc < 3) {
-            usage("Missing filename!\n");
-        }
-        if (argc >= 4) {
-            usage("Too many arguments!\n");
-        }
+
 
     /**
      * @brief This command will start an editor (EDITOR environment variable),
@@ -250,13 +209,7 @@ int main (int argc, char *argv[]) {
         fprintf(stdout, "|path: %s\n", path); /* debug */
         fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
 
-        if (argc < 3) {
-            usage("Missing filename!\n");
-            exit(EXIT_FAILURE);
-        } else if (argc > 4) {
-            usage("Too many arguments!\n");
-            exit(EXIT_FAILURE);
-        } else if (argc == 4 && (strcmp(argv[2], "--force") != 0) && (strcmp(argv[2], "--full") != 0)) {
+        if (argc == 4 && (strcmp(argv[2], "--force") != 0) && (strcmp(argv[2], "--full") != 0)) {
             usage("Unknown command!\n");
             exit(EXIT_FAILURE);
         } else if (argc == 3 && ((strcmp(argv[2], "--force") == 0) || (strcmp(argv[2], "--full") == 0))) {
@@ -265,7 +218,7 @@ int main (int argc, char *argv[]) {
         } else {           
 
             /* set path to /etc
-             * TODO: replace static path value
+             * TODO: replace static value
              */
             snprintf(path, strlen("/etc") + 1, "%s", "/etc");
             fprintf(stdout, "|Path: %s\n", path); /* debug */
@@ -306,8 +259,6 @@ int main (int argc, char *argv[]) {
                     return EXIT_FAILURE;
                 }
 
-
-
             /* if the config file does -not- exist, create it in /etc/ */
             } else if (argc == 4 && strcmp(argv[2], "--force") == 0) {
                 snprintf(pathFilename, strlen(path) + strlen(filenameSuffix) + 2, "%s%s%s", path, "/", filenameSuffix);
@@ -317,6 +268,7 @@ int main (int argc, char *argv[]) {
                 fprintf(stdout, "|filename with suffix: %s\n", filenameSuffix); /* debug */
                 fprintf(stdout, "|path: %s\n", path); /* debug */
                 fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+                fprintf(stdout, "|Creating empty key_file\n"); /* debug */
 
                 /* create new emtpy key_file with the libeconf API */
                 if ((error = econf_newIniFile(&key_file)))
@@ -415,6 +367,7 @@ int main (int argc, char *argv[]) {
                 fprintf(stdout, "|filename: %s\n", filename); /* debug */
                 fprintf(stdout, "|path: %s\n", path); /* debug */
                 fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
+                fprintf(stdout, "|Filling key_file\n"); /* debug */
 
                 if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
                 {
@@ -450,12 +403,6 @@ int main (int argc, char *argv[]) {
      *        most likely to delete all files in /etc for this.
      */
     } else if (strcmp(argv[1], "revert") == 0) {
-        if (argc < 3) {
-            usage("Missing filename!\n");
-        }
-        if (argc >= 4) {
-            usage("Too many arguments!\n");
-        }
         
         char input[2] = "";
 
@@ -490,7 +437,6 @@ int main (int argc, char *argv[]) {
 
     /* cleanup */
     econf_free(key_file);
-
     /* delete tmp files after operation was successful */
     size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_1) + 2;
     char tmpFileOne[combined_length];
