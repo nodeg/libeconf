@@ -215,7 +215,7 @@ int main (int argc, char *argv[]) {
         } else if (argc == 3 && ((strcmp(argv[2], "--force") == 0) || (strcmp(argv[2], "--full") == 0))) {
                 usage("Missing filename!\n");
                 exit(EXIT_FAILURE);
-        } else {           
+        } else {
 
             /* set path to /etc
              * TODO: replace static value
@@ -268,15 +268,22 @@ int main (int argc, char *argv[]) {
                 fprintf(stdout, "|filename with suffix: %s\n", filenameSuffix); /* debug */
                 fprintf(stdout, "|path: %s\n", path); /* debug */
                 fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
-                fprintf(stdout, "|Creating empty key_file\n"); /* debug */
+               
+                fprintf(stdout, "|Reading key_file\n"); /* debug */
+                error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#");
 
-                /* create new emtpy key_file with the libeconf API */
-                if ((error = econf_newIniFile(&key_file)))
-                {
-                    fprintf(stderr, "%s\n", econf_errString(error));
-                    econf_free(key_file);
-                    return EXIT_FAILURE;
-                }
+                if (error == 3) {
+                    /* the file does not exist.
+                     * create new emtpy key_file.
+                     */
+                    fprintf(stdout, "|Creating empty key_file\n"); /* debug */
+                    if ((error = econf_newIniFile(&key_file)))
+                    {
+                        fprintf(stderr, "%s\n", econf_errString(error));
+                        econf_free(key_file);
+                        return EXIT_FAILURE;
+                    }
+                }                
 
                 if (!fileExist(pathFilename)) {
                     fprintf(stdout, "|--File does not exist in /etc\n"); /* debug */
@@ -284,7 +291,7 @@ int main (int argc, char *argv[]) {
                     if (isRoot) {
                         fprintf(stdout, "|--Root path\n"); /* debug */
                         /* check if file.d directory already exists and create it
-                         * if it does not.
+                         * if not.
                          */
 
                          /* construct directory name */
