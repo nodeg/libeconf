@@ -20,6 +20,7 @@
 */
 
 #include <errno.h>
+#include <getopt.h>
 #include <pwd.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -72,6 +73,32 @@ int main (int argc, char *argv[]) {
     memset(home, 0, 4096);
     memset(filename, 0, 4096);
     memset(pathFilename, 0, 4096);
+
+    /* getopt_long */
+    int opt;
+    int option_index = 0;
+    static struct option long_options[] = {
+    /*   name,     arguments,      flag, value */
+        {"full",   no_argument,       0, 'u'},
+        {"force",  no_argument,       0, 'c'},
+        {0,        0,                 0,  0 }
+    };
+
+    while ((opt = getopt_long(argc, argv, "cu",
+            long_options, &option_index)) != -1) {
+
+        switch(opt) {
+                case 'u':
+                    printf ("option %s\n", long_options[option_index].name); /* debug */
+                    break;
+                case 'c':
+                    printf ("option %s\n", long_options[option_index].name); /* debug */
+                    break;                
+                case '?':
+                default:
+                    usage("Unknown option\n");
+                    break;
+        }
 
     /* retrieve the username from the password file entry */
     if (pw) {
@@ -371,6 +398,8 @@ int main (int argc, char *argv[]) {
     } else {
         usage("Unknown command!\n");
     }
+
+    } /* getopt while */    
 
     /* cleanup */
     econf_free(key_file);
