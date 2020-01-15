@@ -32,13 +32,15 @@
 
 #include "libeconf.h"
 
-static void newProcess(const char *, char *, const char *, const char *, econf_file *);
+static void newProcess(const char *, char *, const char *, econf_file *);
 static void usage(const char *);
 
 static const char *TMPPATH= "/tmp";
-static const char *TMPFILE_1 = "econfctl.tmp";
-static const char *TMPFILE_2 = "econfctl_changes.tmp";
+static const char *TMPFILE_ORIG = "econfctl.tmp";
+static const char *TMPFILE_EDIT = "econfctl_edits.tmp";
+static const char *DROPINFILENAME = "90_econfctl.conf";
 static bool isRoot = false;
+static bool isDropinFile = true;
 
 int main (int argc, char *argv[])
 {
@@ -64,7 +66,7 @@ int main (int argc, char *argv[])
     char home[4096]; /* the path of the home directory */
     char filename[4096]; /* the filename without the suffix */
     char filenameSuffix[4096]; /* the filename with the suffix */
-    char pathFilename[4096]; /* the path concatenated with the filename */
+    char pathFilename[4096]; /* the path concatenated with the filename and the suffix */
     uid_t uid = getuid();
     uid_t euid = geteuid();
     char username[256];
@@ -138,6 +140,7 @@ int main (int argc, char *argv[])
     /* initialize home directory and path */
     snprintf(home, strlen(getenv("HOME")) + 1, "%s", getenv("HOME"));
     snprintf(path, strlen("/etc/") + strlen(filenameSuffix) + 5, "%s%s%s", "/etc/", filenameSuffix, ".d");
+    snprintf(pathFilename, strlen(path) + strlen(filenameSuffix) + 4, "%s%s%s", path, "/", filenameSuffix);
 
     const char *editor = getenv("EDITOR");
     if(editor == NULL)
@@ -162,6 +165,7 @@ int main (int argc, char *argv[])
             case 'u':
                 /* overwrite path */
                 snprintf(path, strlen("/etc") + 1, "%s", "/etc");
+                isDropinFile = false;
                 fprintf(stdout, "|option %s\n", longopts[longindex].name); /* debug */
                 fprintf(stdout, "|path: %s\n", path); /* debug */
                 break;
@@ -174,6 +178,7 @@ int main (int argc, char *argv[])
     
     fprintf(stdout, "|--Initial values-- \n");
     fprintf(stdout, "|filename: %s\n", filename); /* debug */
+    fprintf(stdout, "|suffix: %s\n", suffix); /* debug */
     fprintf(stdout, "|filenameSuffix: %s\n", filenameSuffix); /* debug */
     fprintf(stdout, "|XDG conf dir: %s\n", xdgConfigDir); /* debug */
     fprintf(stdout, "|home: %s\n", home); /* debug */
@@ -269,6 +274,7 @@ int main (int argc, char *argv[])
     {
         fprintf(stdout, "|command: edit\n\n"); /* debug */
         fprintf(stdout, "|filename: %s\n", filename); /* debug */
+        fprintf(stdout, "|filenameSuffix: %s\n", filenameSuffix); /* debug */
         fprintf(stdout, "|path: %s\n", path); /* debug */
         fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
 
@@ -311,9 +317,16 @@ int main (int argc, char *argv[])
                 snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
                 fprintf(stdout, "|Not root\n"); /* debug */
                 fprintf(stdout, "|Overwriting path with XDG_CONF_DIR\n\n"); /* debug */
+            } else
+            {
+                if(isDropinFile)
+                {
+                    memset(filename, 0, 4096);
+                    snprintf(filenameSuffix, strlen(DROPINFILENAME) + 1, "%s", DROPINFILENAME);
+                }
             }
-            /* Open $EDITOR in new process */          
-            newProcess(editor, path, filename, filenameSuffix, key_file);
+            /* Open $EDITOR in new process */
+            newProcess(editor, path, filenameSuffix, key_file);
     }
 
     /**
@@ -369,16 +382,16 @@ int main (int argc, char *argv[])
     /* cleanup */
     econf_free(key_file);
     /* delete tmp files after operation was successful */
-    size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_1) + 2;
+    size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_ORIG) + 2;
     char tmpFileOne[combined_length];
     memset(tmpFileOne, 0, combined_length);
-    snprintf(tmpFileOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_1);
+    snprintf(tmpFileOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
     remove(tmpFileOne);
 
-    combined_length = strlen(TMPPATH) + strlen(TMPFILE_2) + 2;
+    combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
     char tmpFileTwo[combined_length];
     memset(tmpFileTwo, 0, combined_length);
-    snprintf(tmpFileTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_2);
+    snprintf(tmpFileTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
     remove(tmpFileTwo);
 
     return EXIT_SUCCESS;
@@ -388,20 +401,20 @@ int main (int argc, char *argv[])
  * @brief Creates a new process to execute a command.
  * @param  command The command which should be executed
  * @param  path The constructed path for saving the file later
- * @param  filename The filename entered by the user
  * @param  key_file the stored config file information
  *
  * TODO: - make a diff of the two tmp files to see what actually changed and
  *         write only that change e.g. into a drop-in file.
  */
-static void newProcess(const char *command, char *path, const char *filename, const char *filenameSuffix, econf_file *key_file)
+static void newProcess(const char *command, char *path, const char *filenameSuffix, econf_file *key_file)
 {
     fprintf(stdout, "\n|----newProcess()----\n"); /* debug */
     fprintf(stdout, "|command: %s\n", command); /* debug */
     fprintf(stdout, "|path: %s\n", path); /* debug */
-    fprintf(stdout, "|filename: %s\n", filename); /* debug */
     fprintf(stdout, "|filename with suffix: %s\n", filenameSuffix); /* debug */
 
+    char pathFilename[4096];
+    memset(pathFilename, 0, 4096);
     econf_err error;
     int wstatus = 0;
     pid_t pid = fork();
@@ -414,15 +427,18 @@ static void newProcess(const char *command, char *path, const char *filename, co
     } else if (pid == 0)
     { /* child */
 
-        /* write contents of key_file to 2 temporary files */
-        if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_1)))
+        /* write contents of key_file to 2 temporary files. In the future this
+         * will be used to make a diff between the two files and only save the
+         * changes the user made.
+         */
+        if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_ORIG)))
         {
             fprintf(stdout, "-->Child: econf_writeFile() 1 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             exit(EXIT_FAILURE);
         }
-        if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_2)))
+        if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_EDIT)))
         {
             fprintf(stdout, "-->Child: econf_writeFile() 2  Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
@@ -431,10 +447,10 @@ static void newProcess(const char *command, char *path, const char *filename, co
         }
 
         /* combine path and filename of the tmp files and set permission to 600 */
-        size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_1) + 2;
+        size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_ORIG) + 2;
         char combined_tmp1[combined_length];
         memset(combined_tmp1, 0, combined_length);
-        snprintf(combined_tmp1, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_1);
+        snprintf(combined_tmp1, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
 
         int perm = chmod(combined_tmp1, S_IRUSR | S_IWUSR);
         if (perm != 0)
@@ -442,10 +458,10 @@ static void newProcess(const char *command, char *path, const char *filename, co
             exit(EXIT_FAILURE);
         }
 
-        combined_length = strlen(TMPPATH) + strlen(TMPFILE_2) + 2;
+        combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
         char combined_tmp2[combined_length];
         memset(combined_tmp2, 0, combined_length);
-        snprintf(combined_tmp2, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_2);
+        snprintf(combined_tmp2, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
 
         perm = chmod(combined_tmp2, S_IRUSR | S_IWUSR);
         if (perm != 0)
@@ -453,7 +469,7 @@ static void newProcess(const char *command, char *path, const char *filename, co
             exit(EXIT_FAILURE);
         }
 
-        /* execute given command and save as TMPFILE_2 */
+        /* execute given command and save in TMPFILE_EDIT */
         execlp(command, command, combined_tmp2, (char *) NULL);
 
     } else
@@ -468,12 +484,12 @@ static void newProcess(const char *command, char *path, const char *filename, co
             fprintf(stdout, "|Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus));
         }
 
-        /* save edits in new key_file */
+        /* save edits from TMPFILE_EDIT in new key_file */
         econf_file *key_file_after = NULL;
-        size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_2) + 2;
+        size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
         char tmpFile[combined_length];
         memset(tmpFile, 0, combined_length);
-        snprintf(tmpFile, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_2);
+        snprintf(tmpFile, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
 
         if ((error = econf_readFile(&key_file_after, tmpFile, "=", "#")))
         {
@@ -499,16 +515,51 @@ static void newProcess(const char *command, char *path, const char *filename, co
                 exit(EXIT_FAILURE);
             }               
         }
-            
-        fprintf(stdout, "|Save normally in %s\n", path); /* debug */
-        if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+
+        /* check if file already exists */
+        snprintf(pathFilename, strlen(path) + strlen(filenameSuffix) + 4, "%s%s%s", path, "/", filenameSuffix);
+        if (access(pathFilename, F_OK) == 0)
         {
-            fprintf(stdout, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
-            fprintf(stderr, "%s\n", econf_errString(error));
-            econf_free(key_file);
-            econf_free(key_file_after);
-            exit(EXIT_FAILURE);
-        }
+            char input[2] = "";
+
+            /* let the user verify that the file should really be overwritten */ 
+            do
+            {
+                fprintf(stdout, "The file %s%s%s already exists!\nYes [y], no [n]\n", path, "/", filenameSuffix);
+                fprintf(stdout, "Do you really want to overwrite it?\nYes [y], no [n]\n");
+                scanf("%2s", input);
+            } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
+
+            if (strcmp(input, "y") == 0)
+            {
+                fprintf(stdout, "|The file already exists!\n"); /* debug */
+                fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
+                if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+                {
+                    fprintf(stdout, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(key_file);
+                    econf_free(key_file_after);
+                    exit(EXIT_FAILURE);
+                }
+            } else 
+            { /* do nothing and just return */
+                econf_free(key_file_after);
+                return;
+            }
+        } else
+        {
+            fprintf(stdout, "|The file does not exist!\n"); /* debug */
+            fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
+                if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+                {
+                    fprintf(stdout, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
+                    fprintf(stderr, "%s\n", econf_errString(error));
+                    econf_free(key_file);
+                    econf_free(key_file_after);
+                    exit(EXIT_FAILURE);
+                }
+        }      
         
         /* cleanup */
         econf_free(key_file_after);
