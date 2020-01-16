@@ -70,16 +70,16 @@ int main (int argc, char *argv[])
     int index = 0;
     static struct option longopts[] = {
     /*   name,     arguments,      flag, value */
-        {"full",   no_argument,       0, 'u'},
+        {"full",   no_argument,       0, 'f'},
         {"help",   no_argument,       0, 'h'},
         {0,        0,                 0,  0 }
     };
 
-     while ((opt = getopt_long(argc, argv, "hu",longopts, &index)) != -1)
+     while ((opt = getopt_long(argc, argv, "hf",longopts, &index)) != -1)
     {
         switch(opt)
         {
-            case 'u':
+            case 'f':
                 /* overwrite path */
                 snprintf(path, strlen("/etc") + 1, "%s", "/etc");
                 isDropinFile = false;
