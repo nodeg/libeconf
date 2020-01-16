@@ -561,14 +561,14 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         {
             fprintf(stdout, "|The file does not exist!\n"); /* debug */
             fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
-                if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
-                {
-                    fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
-                    fprintf(stderr, "%s\n", econf_errString(error));
-                    econf_free(key_file);
-                    econf_free(key_file_after);
-                    exit(EXIT_FAILURE);
-                }
+            if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+            {
+                fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
+                fprintf(stderr, "%s\n", econf_errString(error));
+                econf_free(key_file);
+                econf_free(key_file_after);
+                exit(EXIT_FAILURE);
+            }
         }
         
         /* cleanup */
