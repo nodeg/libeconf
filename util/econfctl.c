@@ -33,8 +33,9 @@
 #include "libeconf.h"
 
 static void newProcess(const char *, char *, const char *, econf_file *);
-static void usage(const char *);
+static void usage(void);
 
+static const char *utilname = "econfctl";
 static const char *TMPPATH= "/tmp";
 static const char *TMPFILE_ORIG = "econfctl.tmp";
 static const char *TMPFILE_EDIT = "econfctl_edits.tmp";
@@ -44,19 +45,6 @@ static bool isDropinFile = true;
 
 int main (int argc, char *argv[])
 {
-    /* only do something if we have an input */
-    if (argc < 3)
-    {
-        usage("Missing filename!\n");
-    } else if (argc > 4)
-    {
-        usage("Too many arguments!\n");
-    } else if (argc == 3 && (strcmp(argv[2], "--full") == 0))
-    {
-        usage("Missing filename!\n");
-        exit(EXIT_FAILURE);
-    }
-
     static const char CONFDIR[] = "/.config";
     econf_file *key_file = NULL;
     econf_err error;
@@ -79,13 +67,51 @@ int main (int argc, char *argv[])
 
     /* getopt_long */
     int opt;
-    int longindex = 0;
+    int index = 0;
     static struct option longopts[] = {
     /*   name,     arguments,      flag, value */
         {"full",   no_argument,       0, 'u'},
+        {"help",   no_argument,       0, 'h'},
         {0,        0,                 0,  0 }
     };
 
+     while ((opt = getopt_long(argc, argv, "hu",longopts, &index)) != -1)
+    {
+        switch(opt)
+        {
+            case 'u':
+                /* overwrite path */
+                snprintf(path, strlen("/etc") + 1, "%s", "/etc");
+                isDropinFile = false;
+                break;
+            case 'h':
+                usage();
+                break;
+            case '?':
+            default:
+                fprintf(stderr, "Try '%s --help' for more information.\n", utilname);
+                exit(EXIT_FAILURE);
+                break;
+        }
+    }
+
+    /* only do something if we have an input */
+    if (argc < 2)
+    {
+        usage();
+    } else if (argc < 3)
+    {
+        fprintf(stderr, "Missing filename!\n");
+        exit(EXIT_FAILURE);
+    } else if (argc > 4)
+    {
+        fprintf(stderr, "Too many arguments!\n");
+        exit(EXIT_FAILURE);
+    } else if (argc == 3 && (strcmp(argv[2], "--full") == 0))
+    {
+        fprintf(stderr, "Missing filename!\n");
+        exit(EXIT_FAILURE);
+    }
 
     /**** initialization ****/
 
@@ -118,7 +144,7 @@ int main (int argc, char *argv[])
     }
     if (posLastDot == NULL)
     {
-        usage("-->Currently only works with a dot in the filename!\n");
+        fprintf(stderr, "-->Currently only works with a dot in the filename!\n");
         exit(EXIT_FAILURE);
     }
     suffix = posLastDot;
@@ -135,12 +161,14 @@ int main (int argc, char *argv[])
     {
         snprintf(filename, strlen(argv[2]) -  strlen(posLastDot) + 1, "%s", argv[2]);
         snprintf(filenameSuffix, strlen(argv[2]) + 1, "%s", argv[2]);
-    }
+    }    
 
-    /* initialize home directory and path */
-    snprintf(home, strlen(getenv("HOME")) + 1, "%s", getenv("HOME"));
-    snprintf(path, strlen("/etc/") + strlen(filenameSuffix) + 5, "%s%s%s", "/etc/", filenameSuffix, ".d");
+    if (isDropinFile)
+    {
+        snprintf(path, strlen("/etc/") + strlen(filenameSuffix) + 5, "%s%s%s", "/etc/", filenameSuffix, ".d");
+    }
     snprintf(pathFilename, strlen(path) + strlen(filenameSuffix) + 4, "%s%s%s", path, "/", filenameSuffix);
+    snprintf(home, strlen(getenv("HOME")) + 1, "%s", getenv("HOME"));
 
     const char *editor = getenv("EDITOR");
     if(editor == NULL)
@@ -157,24 +185,6 @@ int main (int argc, char *argv[])
         strncat(home, CONFDIR, sizeof(home) - strlen(home) - 1);
         xdgConfigDir = home;        
     }
-
-    while ((opt = getopt_long(argc, argv, "u",longopts, &longindex)) != -1)
-    {
-        switch(opt)
-        {
-            case 'u':
-                /* overwrite path */
-                snprintf(path, strlen("/etc") + 1, "%s", "/etc");
-                isDropinFile = false;
-                fprintf(stdout, "|option %s\n", longopts[longindex].name); /* debug */
-                fprintf(stdout, "|path: %s\n", path); /* debug */
-                break;
-            case '?':
-            default:
-                usage("Unknown option!\n");
-                break;
-        }
-    }
     
     fprintf(stdout, "|--Initial values-- \n");
     fprintf(stdout, "|filename: %s\n", filename); /* debug */
@@ -186,7 +196,7 @@ int main (int argc, char *argv[])
     fprintf(stdout, "|pathFilename: %s\n\n", pathFilename); /* debug */
     
 
-    /**
+    /****************************************************************
      * @brief This command will read all snippets for filename.conf
      *        (econf_readDirs) and print all groups, keys and their
      *        values as an application would see them.
@@ -247,7 +257,7 @@ int main (int argc, char *argv[])
         }
         econf_free(groups);
 
-    /**
+    /****************************************************************
      * @brief This command will print the content of the files and the name of the
      *        file in the order as read by econf_readDirs.
      * TODO
@@ -255,7 +265,7 @@ int main (int argc, char *argv[])
     } else if (strcmp(argv[optind], "cat") == 0)
     {
 
-    /**
+    /****************************************************************
      * @brief This command will start an editor (EDITOR environment variable),
      *        which shows all groups, keys and their values (like econfctl
      *        show output), allows the admin to modify them, and stores the
@@ -280,11 +290,11 @@ int main (int argc, char *argv[])
 
         if (argc == 4 && (strcmp(argv[optind - 1], "--full") != 0))
         {
-            usage("Unknown command!\n");
+            fprintf(stderr, "Unknown command!\n");
             exit(EXIT_FAILURE);
         } else if (argc == 3 && (strcmp(argv[optind - 1], "--full") == 0))
         {
-                usage("Missing filename!\n");
+                fprintf(stderr, "Missing filename!\n");
                 exit(EXIT_FAILURE);
         } else
         {  
@@ -303,7 +313,6 @@ int main (int argc, char *argv[])
                     econf_free(key_file);
                     return EXIT_FAILURE;
                 }
-
             } else if ((error =! 3) || (error != 0))
             {
                 /* other errors besides "missing config file" or "no error" */
@@ -329,7 +338,7 @@ int main (int argc, char *argv[])
             newProcess(editor, path, filenameSuffix, key_file);
     }
 
-    /**
+    /****************************************************************
      * @biref Revert all changes to the vendor versions. In the end this means
      *        most likely to delete all files in /etc for this.
      */
@@ -376,7 +385,8 @@ int main (int argc, char *argv[])
         }
     } else
     {
-        usage("Unknown command!\n");
+        fprintf(stderr, "Unknown command!\n");
+        exit(EXIT_FAILURE);
     }  
 
     /* cleanup */
@@ -433,14 +443,14 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
          */
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_ORIG)))
         {
-            fprintf(stdout, "-->Child: econf_writeFile() 1 Error!\n"); /* debug */
+            fprintf(stderr, "-->Child: econf_writeFile() 1 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             exit(EXIT_FAILURE);
         }
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_EDIT)))
         {
-            fprintf(stdout, "-->Child: econf_writeFile() 2  Error!\n"); /* debug */
+            fprintf(stderr, "-->Child: econf_writeFile() 2  Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             exit(EXIT_FAILURE);
@@ -481,7 +491,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         }
         if (WIFEXITED(wstatus))
         {
-            fprintf(stdout, "|Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus));
+            fprintf(stdout, "|Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus)); /* debug */
         }
 
         /* save edits from TMPFILE_EDIT in new key_file */
@@ -493,7 +503,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
 
         if ((error = econf_readFile(&key_file_after, tmpFile, "=", "#")))
         {
-            fprintf(stdout, "-->econf_readFile() 3 Error!\n"); /* debug */
+            fprintf(stderr, "-->econf_readFile() 3 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             econf_free(key_file_after);
@@ -536,7 +546,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
                 fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
                 if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
                 {
-                    fprintf(stdout, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
+                    fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
                     econf_free(key_file);
                     econf_free(key_file_after);
@@ -553,13 +563,13 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
                 if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
                 {
-                    fprintf(stdout, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
+                    fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
                     econf_free(key_file);
                     econf_free(key_file_after);
                     exit(EXIT_FAILURE);
                 }
-        }      
+        }
         
         /* cleanup */
         econf_free(key_file_after);
@@ -569,20 +579,19 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
 /**
  * @brief Print error messages and show the usage.
  */
-static void usage(const char *message)
+static void usage(void)
 {
-    fprintf(stderr,"%s\n", message);
-    fprintf(stderr, "Usage: econfctl [ COMMANDS ] [ options ] filename.conf\n\n"
-        "COMMANDS:\n"
-        "show     reads all snippets for filename.conf and prints all groups,\n"   \
-        "         keys and their values.\n"
-        "cat      prints the content and the name of the file in the order as\n"   \
-        "         read by libeconf.\n"
-        "edit     starts the editor EDITOR (environment variable) where the\n"     \
-        "         groups, keys and values can be modified and saved afterwards.\n"
-        "   --full:   copy the original configuration file to /etc instead of\n"   \
-        "             creating drop-in files.\n"
-        "revert   reverts all changes to the vendor versions. Basically deletes\n" \
-        "         the config file in /etc.\n\n");
+    fprintf(stderr, "Usage: %s COMMANDS [OPTIONS] filename.conf\n\n", utilname);
+    fprintf(stderr, "COMMANDS:\n");
+    fprintf(stderr, "show     reads all snippets for filename.conf and prints all groups,\n");
+    fprintf(stderr, "         keys and their values.\n");
+    fprintf(stderr, "cat      prints the content and the name of the file in the order as\n");
+    fprintf(stderr, "         read by libeconf.\n");
+    fprintf(stderr, "edit     starts the editor EDITOR (environment variable) where the\n");
+    fprintf(stderr, "         groups, keys and values can be modified and saved afterwards.\n");
+    fprintf(stderr, "   --full:   copy the original configuration file to /etc instead of\n");
+    fprintf(stderr, "             creating drop-in files.\n");
+    fprintf(stderr, "revert   reverts all changes to the vendor versions. Basically deletes\n");
+    fprintf(stderr, "         the config file in /etc.\n\n");
     exit(EXIT_FAILURE);
 }
