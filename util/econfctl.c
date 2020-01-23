@@ -393,16 +393,16 @@ int main (int argc, char *argv[])
     econf_free(key_file);
     /* delete tmp files after operation was successful */
     size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_ORIG) + 2;
-    char tmpFileOne[combined_length];
-    memset(tmpFileOne, 0, combined_length);
-    snprintf(tmpFileOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
-    remove(tmpFileOne);
+    char tmpfile_editedOne[combined_length];
+    memset(tmpfile_editedOne, 0, combined_length);
+    snprintf(tmpfile_editedOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
+    remove(tmpfile_editedOne);
 
     combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
-    char tmpFileTwo[combined_length];
-    memset(tmpFileTwo, 0, combined_length);
-    snprintf(tmpFileTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
-    remove(tmpFileTwo);
+    char tmpfile_editedTwo[combined_length];
+    memset(tmpfile_editedTwo, 0, combined_length);
+    snprintf(tmpfile_editedTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
+    remove(tmpfile_editedTwo);
 
     return EXIT_SUCCESS;
 }
@@ -411,6 +411,7 @@ int main (int argc, char *argv[])
  * @brief Creates a new process to execute a command.
  * @param  command The command which should be executed
  * @param  path The constructed path for saving the file later
+ * @param  filenameSuffix The filename with suffix
  * @param  key_file the stored config file information
  *
  * TODO: - make a diff of the two tmp files to see what actually changed and
@@ -469,18 +470,18 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         }
 
         combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
-        char combined_tmp2[combined_length];
-        memset(combined_tmp2, 0, combined_length);
-        snprintf(combined_tmp2, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
+        char path_tmpfile_edit[combined_length];
+        memset(path_tmpfile_edit, 0, combined_length);
+        snprintf(path_tmpfile_edit, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
 
-        perm = chmod(combined_tmp2, S_IRUSR | S_IWUSR);
+        perm = chmod(path_tmpfile_edit, S_IRUSR | S_IWUSR);
         if (perm != 0)
         {
             exit(EXIT_FAILURE);
         }
 
         /* execute given command and save in TMPFILE_EDIT */
-        execlp(command, command, combined_tmp2, (char *) NULL);
+        execlp(command, command, path_tmpfile_edit, (char *) NULL);
 
     } else
     { /* parent */
@@ -495,20 +496,20 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         }
 
         /* save edits from TMPFILE_EDIT in new key_file */
-        econf_file *key_file_after = NULL;
+        econf_file *key_file_edit = NULL;
         size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
-        char tmpFile[combined_length];
-        memset(tmpFile, 0, combined_length);
-        snprintf(tmpFile, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
+        char tmpfile_edited[combined_length];
+        memset(tmpfile_edited, 0, combined_length);
+        snprintf(tmpfile_edited, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
 
-        if ((error = econf_readFile(&key_file_after, tmpFile, "=", "#")))
+        if ((error = econf_readFile(&key_file_edit, tmpfile_edited, "=", "#")))
         {
             fprintf(stderr, "-->econf_readFile() 3 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
-            econf_free(key_file_after);
+            econf_free(key_file_edit);
             exit(EXIT_FAILURE);
-        }       
+        }
 
         /* if /etc/filename.conf.d does not exist, create it, otherwise
          * econf_writeFile() will fail
@@ -544,40 +545,40 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             {
                 fprintf(stdout, "|The file already exists!\n"); /* debug */
                 fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
-                if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+                if ((error = econf_writeFile(key_file_edit, path, filenameSuffix)))
                 {
                     fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
                     econf_free(key_file);
-                    econf_free(key_file_after);
+                    econf_free(key_file_edit);
                     exit(EXIT_FAILURE);
                 }
             } else 
             { /* do nothing and just return */
-                econf_free(key_file_after);
+                econf_free(key_file_edit);
                 return;
             }
         } else
         {
             fprintf(stdout, "|The file does not exist!\n"); /* debug */
             fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
-            if ((error = econf_writeFile(key_file_after, path, filenameSuffix)))
+            if ((error = econf_writeFile(key_file_edit, path, filenameSuffix)))
             {
                 fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                 fprintf(stderr, "%s\n", econf_errString(error));
                 econf_free(key_file);
-                econf_free(key_file_after);
+                econf_free(key_file_edit);
                 exit(EXIT_FAILURE);
             }
         }
         
         /* cleanup */
-        econf_free(key_file_after);
+        econf_free(key_file_edit);
     }
 }
 
 /**
- * @brief Print error messages and show the usage.
+ * @brief Shows the usage.
  */
 static void usage(void)
 {
