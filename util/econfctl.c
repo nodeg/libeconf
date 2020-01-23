@@ -33,6 +33,7 @@
 #include "libeconf.h"
 
 static void newProcess(const char *, char *, const char *, econf_file *);
+static void deleteTmpFiles(void);
 static void usage(void);
 
 static const char *utilname = "econfctl";
@@ -391,19 +392,7 @@ int main (int argc, char *argv[])
 
     /* cleanup */
     econf_free(key_file);
-    /* delete tmp files after operation was successful */
-    size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_ORIG) + 2;
-    char tmpfile_editedOne[combined_length];
-    memset(tmpfile_editedOne, 0, combined_length);
-    snprintf(tmpfile_editedOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
-    remove(tmpfile_editedOne);
-
-    combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
-    char tmpfile_editedTwo[combined_length];
-    memset(tmpfile_editedTwo, 0, combined_length);
-    snprintf(tmpfile_editedTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
-    remove(tmpfile_editedTwo);
-
+    deleteTmpFiles();
     return EXIT_SUCCESS;
 }
 
@@ -447,6 +436,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             fprintf(stderr, "-->Child: econf_writeFile() 1 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
+            deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_EDIT)))
@@ -454,6 +444,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             fprintf(stderr, "-->Child: econf_writeFile() 2  Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
+            deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
 
@@ -466,6 +457,8 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         int perm = chmod(combined_tmp1, S_IRUSR | S_IWUSR);
         if (perm != 0)
         {
+        	econf_free(key_file);
+        	deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
 
@@ -477,6 +470,8 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         perm = chmod(path_tmpfile_edit, S_IRUSR | S_IWUSR);
         if (perm != 0)
         {
+        	econf_free(key_file);
+        	deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
 
@@ -488,6 +483,8 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         if (waitpid(pid, &wstatus, 0) == - 1)
         {
             fprintf(stderr, "-->Error using waitpid().\n");
+            econf_free(key_file);
+            deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
         if (WIFEXITED(wstatus))
@@ -508,6 +505,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             econf_free(key_file_edit);
+            deleteTmpFiles();
             exit(EXIT_FAILURE);
         }
 
@@ -523,6 +521,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             {
                 fprintf(stderr, "-->Error with mkdir()!\n");
                 econf_free(key_file);
+                deleteTmpFiles();
                 exit(EXIT_FAILURE);
             }               
         }
@@ -551,6 +550,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
                     fprintf(stderr, "%s\n", econf_errString(error));
                     econf_free(key_file);
                     econf_free(key_file_edit);
+                    deleteTmpFiles();
                     exit(EXIT_FAILURE);
                 }
             } else 
@@ -568,6 +568,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
                 fprintf(stderr, "%s\n", econf_errString(error));
                 econf_free(key_file);
                 econf_free(key_file_edit);
+                deleteTmpFiles();
                 exit(EXIT_FAILURE);
             }
         }
@@ -575,6 +576,24 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         /* cleanup */
         econf_free(key_file_edit);
     }
+}
+
+/**
+ * @brief Deletes the 2 created tmp files in /tmp.
+ */
+static void deleteTmpFiles(void)
+{
+    size_t combined_length = strlen(TMPPATH) + strlen(TMPFILE_ORIG) + 2;
+    char tmpfile_editedOne[combined_length];
+    memset(tmpfile_editedOne, 0, combined_length);
+    snprintf(tmpfile_editedOne, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_ORIG);
+    remove(tmpfile_editedOne);
+
+    combined_length = strlen(TMPPATH) + strlen(TMPFILE_EDIT) + 2;
+    char tmpfile_editedTwo[combined_length];
+    memset(tmpfile_editedTwo, 0, combined_length);
+    snprintf(tmpfile_editedTwo, combined_length, "%s%s%s", TMPPATH, "/", TMPFILE_EDIT);
+    remove(tmpfile_editedTwo);
 }
 
 /**
