@@ -404,7 +404,7 @@ int main (int argc, char *argv[])
  * @param  key_file the stored config file information
  *
  * TODO: - make a diff of the two tmp files to see what actually changed and
- *         write only that change e.g. into a drop-in file.
+ *         write only that change into a drop-in file.
  */
 static void newProcess(const char *command, char *path, const char *filenameSuffix, econf_file *key_file)
 {
@@ -523,7 +523,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
                 econf_free(key_file);
                 deleteTmpFiles();
                 exit(EXIT_FAILURE);
-            }               
+            }
         }
 
         /* check if file already exists */
@@ -535,7 +535,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             /* let the user verify that the file should really be overwritten */ 
             do
             {
-                fprintf(stdout, "The file %s%s%s already exists!\nYes [y], no [n]\n", path, "/", filenameSuffix);
+                fprintf(stdout, "The file %s%s%s already exists!\n", path, "/", filenameSuffix);
                 fprintf(stdout, "Do you really want to overwrite it?\nYes [y], no [n]\n");
                 scanf("%2s", input);
             } while (strcmp(input, "y") != 0 && strcmp(input, "n") != 0);
