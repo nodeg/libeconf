@@ -185,17 +185,7 @@ int main (int argc, char *argv[])
          */
         strncat(home, CONFDIR, sizeof(home) - strlen(home) - 1);
         xdgConfigDir = home;        
-    }
-    
-    fprintf(stdout, "|--Initial values-- \n");
-    fprintf(stdout, "|filename: %s\n", filename); /* debug */
-    fprintf(stdout, "|suffix: %s\n", suffix); /* debug */
-    fprintf(stdout, "|filenameSuffix: %s\n", filenameSuffix); /* debug */
-    fprintf(stdout, "|XDG conf dir: %s\n", xdgConfigDir); /* debug */
-    fprintf(stdout, "|home: %s\n", home); /* debug */
-    fprintf(stdout, "|path: %s\n", path); /* debug */
-    fprintf(stdout, "|pathFilename: %s\n\n", pathFilename); /* debug */
-    
+    }    
 
     /****************************************************************
      * @brief This command will read all snippets for filename.conf
@@ -204,8 +194,6 @@ int main (int argc, char *argv[])
      */
     if (strcmp(argv[optind], "show") == 0)
     {
-        fprintf(stdout, "command: econfctl show\n\n"); /* debug */
-
         if ((error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#")))
         {
             fprintf(stderr, "%s\n", econf_errString(error));
@@ -283,12 +271,6 @@ int main (int argc, char *argv[])
      */
     } else if (strcmp(argv[optind], "edit") == 0)
     {
-        fprintf(stdout, "|command: edit\n\n"); /* debug */
-        fprintf(stdout, "|filename: %s\n", filename); /* debug */
-        fprintf(stdout, "|filenameSuffix: %s\n", filenameSuffix); /* debug */
-        fprintf(stdout, "|path: %s\n", path); /* debug */
-        fprintf(stdout, "|pathFilename: %s\n", pathFilename); /* debug */
-
         if (argc == 4 && (strcmp(argv[optind - 1], "--full") != 0))
         {
             fprintf(stderr, "Unknown command!\n");
@@ -298,16 +280,13 @@ int main (int argc, char *argv[])
                 fprintf(stderr, "Missing filename!\n");
                 exit(EXIT_FAILURE);
         } else
-        {  
-            fprintf(stdout, "|Reading key_file\n"); /* debug */
+        {
             error = econf_readDirs(&key_file, "/usr/etc", "/etc", filename, suffix,"=", "#");
 
             if (error == 3)
             { /* the file does not exist */
                 
                 /* create empty key file */
-                fprintf(stdout, "|File does not exist\n"); /* debug */
-                fprintf(stdout, "|Creating empty key_file\n"); /* debug */
                 if ((error = econf_newIniFile(&key_file)))
                 {
                     fprintf(stderr, "%s\n", econf_errString(error));
@@ -325,8 +304,6 @@ int main (int argc, char *argv[])
             {
                 /* adjust path to home directory of the user.*/
                 snprintf(path, strlen(xdgConfigDir) + 1, "%s", xdgConfigDir);
-                fprintf(stdout, "|Not root\n"); /* debug */
-                fprintf(stdout, "|Overwriting path with XDG_CONF_DIR\n\n"); /* debug */
             } else
             {
                 if(isDropinFile)
@@ -344,13 +321,7 @@ int main (int argc, char *argv[])
      *        most likely to delete all files in /etc for this.
      */
     } else if (strcmp(argv[optind], "revert") == 0)
-    {
-        fprintf(stdout, "|command: revert\n\n"); /* debug */
-        fprintf(stdout, "|filename: %s\n", filename); /* debug */
-        fprintf(stdout, "|filenameSuffix: %s\n", filenameSuffix); /* debug */
-        fprintf(stdout, "|path: %s\n", path); /* debug */
-        fprintf(stdout, "|pathFilename: %s\n\n", pathFilename); /* debug */
-    
+    { 
         char input[2] = "";
 
         /* let the user verify 2 times that the file should really be deleted */ 
@@ -408,11 +379,6 @@ int main (int argc, char *argv[])
  */
 static void newProcess(const char *command, char *path, const char *filenameSuffix, econf_file *key_file)
 {
-    fprintf(stdout, "\n|----newProcess()----\n"); /* debug */
-    fprintf(stdout, "|command: %s\n", command); /* debug */
-    fprintf(stdout, "|path: %s\n", path); /* debug */
-    fprintf(stdout, "|filename with suffix: %s\n", filenameSuffix); /* debug */
-
     char pathFilename[4096];
     memset(pathFilename, 0, 4096);
     econf_err error;
@@ -433,7 +399,6 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
          */
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_ORIG)))
         {
-            fprintf(stderr, "-->Child: econf_writeFile() 1 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             deleteTmpFiles();
@@ -441,7 +406,6 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         }
         if ((error = econf_writeFile(key_file, TMPPATH, TMPFILE_EDIT)))
         {
-            fprintf(stderr, "-->Child: econf_writeFile() 2  Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             deleteTmpFiles();
@@ -489,7 +453,7 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
         }
         if (WIFEXITED(wstatus))
         {
-            fprintf(stdout, "|Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus)); /* debug */
+            //fprintf(stdout, "|Exitstatus child (0 = OK): %d\n\n", WEXITSTATUS(wstatus)); /* debug */
         }
 
         /* save edits from TMPFILE_EDIT in new key_file */
@@ -501,7 +465,6 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
 
         if ((error = econf_readFile(&key_file_edit, tmpfile_edited, "=", "#")))
         {
-            fprintf(stderr, "-->econf_readFile() 3 Error!\n"); /* debug */
             fprintf(stderr, "%s\n", econf_errString(error));
             econf_free(key_file);
             econf_free(key_file_edit);
@@ -514,8 +477,6 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
          */
         if (access(path, F_OK) == -1 && errno == ENOENT)
         {
-            
-            fprintf(stdout, "|create parent directory\n");  /* debug */
             int mkDir = mkdir(path, S_IRUSR | S_IWUSR | S_IXUSR | S_IRGRP | S_IXGRP | S_IROTH | S_IXOTH); // 755
             if (mkDir != 0)
             {
@@ -542,11 +503,8 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
 
             if (strcmp(input, "y") == 0)
             {
-                fprintf(stdout, "|The file already exists!\n"); /* debug */
-                fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
                 if ((error = econf_writeFile(key_file_edit, path, filenameSuffix)))
                 {
-                    fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                     fprintf(stderr, "%s\n", econf_errString(error));
                     econf_free(key_file);
                     econf_free(key_file_edit);
@@ -560,11 +518,8 @@ static void newProcess(const char *command, char *path, const char *filenameSuff
             }
         } else
         {
-            fprintf(stdout, "|The file does not exist!\n"); /* debug */
-            fprintf(stdout, "|Save as %s\n", pathFilename); /* debug */
             if ((error = econf_writeFile(key_file_edit, path, filenameSuffix)))
             {
-                fprintf(stderr, "-->Saving file: econf_writeFile() 5 Error!\n"); /* debug */
                 fprintf(stderr, "%s\n", econf_errString(error));
                 econf_free(key_file);
                 econf_free(key_file_edit);
